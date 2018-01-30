@@ -19,7 +19,7 @@ analyze_thickness <- function(segmentation_file,
   grid_center <- read_center_xml(grid_center_file)
 
 
-  # PARSE COORDINATES ------------------------------------------------------------
+  # PARSE COORDINATES ----------------------------------------------------------
   # Add one to use the 1-based coordinate convention in R.
   center_x_voxel <- grid_center[["center"]][["x"]] + 1
   center_z_voxel <- grid_center[["center"]][["z"]] + 1
