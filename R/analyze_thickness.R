@@ -6,6 +6,7 @@
 #' @importFrom heyexr read_segmentation_xml read_center_xml
 #' @importFrom dplyr select rename group_by summarize ungroup
 #' @importFrom magrittr %>%
+#' @importFrom purrrlyr by_row
 analyze_thickness <- function(segmentation_file,
                               grid_center_file,
                               grid_regions,
@@ -39,7 +40,7 @@ analyze_thickness <- function(segmentation_file,
   grid_regions_segments <- make_grid_sectors(grid_regions,
                                              center_x = 0,
                                              center_y = 0) %>%
-    purrrlyr::by_row(~affine_transform_coord(x = .$x,
+    by_row(~affine_transform_coord(x = .$x,
                                              y = .$y,
                                              affine = affine_matrix),
                      .collate = "cols") %>%
