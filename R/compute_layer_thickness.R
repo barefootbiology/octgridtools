@@ -7,6 +7,11 @@
 #' @importFrom magrittr %>%
 compute_layer_thickness <- function(seg) {
   seg$layers %>%
+    # ------------
+    # Remove ascans which were marked by the Iowa Reference Algorithms as
+    # unreliable.
+    anti_join(seg$undefined_region) %>%
+    # ------------
     group_by(bscan_id, ascan_id) %>%
     arrange(bscan_id, ascan_id) %>%
     mutate(thickness_voxels = lead(value) - value) %>%

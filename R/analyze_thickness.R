@@ -8,9 +8,10 @@
 #' @importFrom magrittr %>%
 #' @importFrom purrrlyr by_row
 analyze_thickness <- function(segmentation_file,
-                              grid_center_file,
-                              grid_regions,
-                              layer_definition) {
+                                   grid_center_file,
+                                   grid_regions,
+                                   layer_definition,
+                                   return_objects = FALSE) {
 
   # IRA segmentation surfaces
   segmentation <- read_segmentation_xml(segmentation_file)
@@ -19,7 +20,7 @@ analyze_thickness <- function(segmentation_file,
   grid_center <- read_center_xml(grid_center_file)
 
 
-  # PARSE COORDINATES ----------------------------------------------------------
+  # PARSE COORDINATES ------------------------------------------------------------
   # Add one to use the 1-based coordinate convention in R.
   center_x_voxel <- grid_center[["center"]][["x"]][[1]] + 1
   center_z_voxel <- grid_center[["center"]][["z"]][[1]] + 1
@@ -40,7 +41,7 @@ analyze_thickness <- function(segmentation_file,
   grid_regions_segments <- make_grid_sectors(grid_regions,
                                              center_x = 0,
                                              center_y = 0) %>%
-    by_row(~affine_transform_coord(x = .$x,
+    purrrlyr::by_row(~affine_transform_coord(x = .$x,
                                              y = .$y,
                                              affine = affine_matrix),
                      .collate = "cols") %>%
@@ -66,6 +67,15 @@ analyze_thickness <- function(segmentation_file,
   layer_region_thickness_summarized <- summarize_region_thickness(points_in_regions,
                                                                   reg_centers)
 
-  return(layer_region_thickness_summarized)
+  if(!return_objects) {
 
+    return(layer_region_thickness_summarized)
+
+  } else {
+
+    return(list(thickness = layer_region_thickness_summarized,
+                segmentation = segmentation,
+                center = grid_center))
+
+  }
 }
