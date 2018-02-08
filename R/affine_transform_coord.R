@@ -9,6 +9,8 @@ affine_transform_coord <- function(df, coords = c("x", "y"), affine) {
   # return(data.frame(x = result[1,],
   #                   y = result[2,]))
 
+  # TASK: This could probably be updated, just incase the coords vector includes
+  #       a column named "v1"
   df[, coords] <- affine %*% t(as.matrix(df[, coords] %>%
                          mutate(v1 = 1))) %>%
     t() %>%
