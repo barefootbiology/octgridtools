@@ -20,7 +20,7 @@ analyze_thickness <- function(segmentation_file,
   grid_center <- read_center_xml(grid_center_file)
 
 
-  # PARSE COORDINATES ------------------------------------------------------------
+  # PARSE COORDINATES ----------------------------------------------------------
   # Add one to use the 1-based coordinate convention in R.
   center_x_voxel <- grid_center[["center"]][["x"]][[1]] + 1
   center_z_voxel <- grid_center[["center"]][["z"]][[1]] + 1
@@ -38,15 +38,17 @@ analyze_thickness <- function(segmentation_file,
   # Using affine transformation, flip the coordinates about the origin on
   # the vertical axis, then translate the coordinates to the foveal
   # coordinates (center_x, center_y).
-  grid_regions_segments <- make_grid_sectors(grid_regions,
-                                             center_x = 0,
-                                             center_y = 0) %>%
-    purrrlyr::by_row(~affine_transform_coord(x = .$x,
-                                             y = .$y,
-                                             affine = affine_matrix),
-                     .collate = "cols") %>%
-    select(-x, -y) %>%
-    rename(x = x1, y = y1)
+
+  grid_regions_segments <- grid_regions %>%
+    # # TASK: Replace this affine transformation with a simpler matrix
+    # #       multiplication
+    # by_row(~affine_transform_coord(x = .$x,
+    #                              y = .$y,
+    #                              affine = affine_matrix),
+    #      .collate = "cols") %>%
+    # select(-x, -y) %>%
+    # rename(x = x1, y = y1)
+    affine_transform_coord(c("x", "y"), affine = affine_matrix)
 
   reg_centers <- grid_regions_segments %>%
     group_by(sector_id) %>%
