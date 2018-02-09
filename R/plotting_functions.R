@@ -54,7 +54,7 @@ ggplot_pca2 <- function(x, pc1=1, pc2=2, info) {
 
 # Create a ggplot2 graph of the circle of correlations
 ggplot_coc <- function(x, pc1, pc2, labels=c(pc1, pc2)) {
-  corcir <- circle(c(0, 0), npoints = 100)
+  corcir <- generate_circle(c(0, 0), npoints = 100)
 
   # create data frame with correlations between variables and PCs
   correlations <-
@@ -151,7 +151,7 @@ ggplot_pca2_caret <- function(x, pc1=1, pc2=2, info) {
 
 # Create a ggplot2 graph of the circle of correlations
 ggplot_coc_caret <- function(x, pcs, pc1, pc2, labels=c(pc1, pc2)) {
-  corcir <- circle(c(0, 0), npoints = 100)
+  corcir <- generate_circle(c(0, 0), npoints = 100)
 
   # create data frame with correlations between variables and PCs
   correlations <-

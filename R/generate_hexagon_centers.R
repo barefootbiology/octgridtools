@@ -5,7 +5,7 @@
 #' @export
 #' @importFrom dplyr rowwise mutate ungroup
 #' @importFrom magrittr %>%
-generate_hex_centers <- function(rows, columns, radius, x0=0, y0=0) {
+generate_hexagon_centers <- function(rows, columns, radius, x0=0, y0=0) {
   expand.grid(1:rows, 1:columns) %>%
     setNames(c("row", "column")) %>%
     rowwise() %>%

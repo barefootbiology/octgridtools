@@ -6,8 +6,9 @@
 #' @importFrom dplyr mutate
 #' @importFrom scales rescale
 #' @importFrom magrittr %>%
-make_grid_rectangles <- function(center_x, center_y, nrow, ncol, width) {
-  data.frame(
+#' @importFrom tibble tibble
+generate_grid_rectangles <- function(center_x, center_y, nrow, ncol, width) {
+  tibble(
     region_id = 1:(nrow * ncol),
     row_id = rep(1:nrow, each = ncol),
     col_id = rep(1:ncol, times = nrow)

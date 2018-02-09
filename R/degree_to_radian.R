@@ -3,6 +3,6 @@
 #' Covert degrees to radians
 #'
 #' @export
-d2r <- function(x) {
+degree_to_radian <- function(x) {
   x * pi / 180
 }

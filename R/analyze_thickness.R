@@ -50,7 +50,8 @@ analyze_thickness <- function(segmentation_file,
   # Using affine transformation, flip the coordinates about the origin on
   # the vertical axis, then translate the coordinates to the foveal
   # coordinates (center_x, center_y).
-  grid_regions_segments <- grid_regions %>%
+  grid_regions_segments <-
+    grid_regions %>%
     affine_transform_coord(c("x", "y"), affine = affine_matrix)
 
   reg_centers <-

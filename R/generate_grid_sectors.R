@@ -5,15 +5,15 @@
 #' @export
 #' @importFrom dplyr mutate rowwise do ungroup
 #' @importFrom magrittr %>%
-make_grid_sectors <- function(grid_reg, center_x, center_y) {
+generate_grid_sectors <- function(grid_reg, center_x, center_y) {
   grid_reg %>%
     mutate(
       radius_from = radius_from,
       radius_to = radius_to
     ) %>%
     mutate(
-      angle_from = d2r(angle_from),
-      angle_to = d2r(angle_to)
+      angle_from = degree_to_radian(angle_from),
+      angle_to = degree_to_radian(angle_to)
     ) %>%
     rowwise() %>%
     do(sector_to_polygon(
