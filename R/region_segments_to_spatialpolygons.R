@@ -16,19 +16,21 @@ region_segments_to_spatialpolygons <- function(reg_seg) {
     ungroup()
 
   reg_seg_rep %>%
-    by(reg_seg_rep$sector_id,
-       function(x) x %>% select(x, y) %>%
-         as.data.frame() %>%
-         as.matrix() %>%
-         coordinates() %>%
-         Polygon(hole = FALSE) %>%
-         list %>%
-         Polygons(ID = x[1, "sector_id"])) %>%
+    by(
+      reg_seg_rep$sector_id,
+      function(x) x %>%
+          select(x, y) %>%
+          as.data.frame() %>%
+          as.matrix() %>%
+          coordinates() %>%
+          Polygon(hole = FALSE) %>%
+          list() %>%
+          Polygons(ID = x[1, "sector_id"])
+    ) %>%
     unlist() %>%
     SpatialPolygons() %>%
     SpatialPolygonsDataFrame(reg_seg %>%
-                               select(sector_id) %>%
-                               distinct() %>%
-                               as.data.frame())
-
+      select(sector_id) %>%
+      distinct() %>%
+      as.data.frame())
 }

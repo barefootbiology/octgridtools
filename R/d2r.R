@@ -4,5 +4,5 @@
 #'
 #' @export
 d2r <- function(x) {
-  return(x * pi / 180)
+  x * pi / 180
 }

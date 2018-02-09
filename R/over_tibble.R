@@ -7,7 +7,8 @@
 #' @importFrom sp over
 #' @importFrom magrittr %>%
 over_tibble <- function(x, y, data = NULL) {
-  result <- sp::over(x = x, y = y) %>%
+  result <-
+    over(x = x, y = y) %>%
     as_tibble()
 
   if (!is.null(data)) {
@@ -16,5 +17,5 @@ over_tibble <- function(x, y, data = NULL) {
       as_tibble()
   }
 
-  return(result)
+  result
 }

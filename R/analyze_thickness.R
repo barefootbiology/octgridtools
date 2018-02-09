@@ -8,10 +8,10 @@
 #' @importFrom magrittr %>%
 #' @importFrom purrrlyr by_row
 analyze_thickness <- function(segmentation_file,
-                                   grid_center_file,
-                                   grid_regions,
-                                   layer_definition,
-                                   return_objects = FALSE,
+                              grid_center_file,
+                              grid_regions,
+                              layer_definition,
+                              return_objects = FALSE,
                               flip_region = "OD") {
 
   # IRA segmentation surfaces
@@ -36,12 +36,16 @@ analyze_thickness <- function(segmentation_file,
   # TASK: Rework this so that I don't have to perform this flip here.
   laterality <- grid_center[["scan_characteristics"]][["laterality"]][[1]]
 
-  flip_y <- if_else(flip_region == laterality, 1, -1)
+  flip_y <- if (flip_region == laterality) 1 else -1
 
-  affine_matrix <- matrix(c(flip_y, 0, center_x,
-                            0, -1, center_z,
-                            0, 0, 1),
-                          byrow = TRUE, ncol = 3)
+  affine_matrix <- matrix(
+    c(
+      flip_y, 0, center_x,
+      0, -1, center_z,
+      0, 0, 1
+    ),
+    byrow = TRUE, ncol = 3
+  )
 
   # Using affine transformation, flip the coordinates about the origin on
   # the vertical axis, then translate the coordinates to the foveal
@@ -49,10 +53,13 @@ analyze_thickness <- function(segmentation_file,
   grid_regions_segments <- grid_regions %>%
     affine_transform_coord(c("x", "y"), affine = affine_matrix)
 
-  reg_centers <- grid_regions_segments %>%
+  reg_centers <-
+    grid_regions_segments %>%
     group_by(sector_id) %>%
-    dplyr::summarize(center_x = mean(x),
-                     center_z = mean(y)) %>%
+    dplyr::summarize(
+      center_x = mean(x),
+      center_z = mean(y)
+    ) %>%
     ungroup()
 
   regions_polygons <- region_segments_to_spatialpolygons(grid_regions_segments)
@@ -61,22 +68,24 @@ analyze_thickness <- function(segmentation_file,
 
   segmentation_thickness_points <- tibble_to_spatialpoints(segmentation_thickness)
 
-  points_in_regions <- find_points_in_regions(segmentation_thickness_points,
-                                              regions_polygons,
-                                              segmentation_thickness)
+  points_in_regions <- find_points_in_regions(
+    segmentation_thickness_points,
+    regions_polygons,
+    segmentation_thickness
+  )
 
-  layer_region_thickness_summarized <- summarize_region_thickness(points_in_regions,
-                                                                  reg_centers)
+  layer_region_thickness_summarized <- summarize_region_thickness(
+    points_in_regions,
+    reg_centers
+  )
 
-  if(!return_objects) {
-
+  if (!return_objects) {
     return(layer_region_thickness_summarized)
-
   } else {
-
-    return(list(thickness = layer_region_thickness_summarized,
-                segmentation = segmentation,
-                center = grid_center))
-
+    return(list(
+      thickness = layer_region_thickness_summarized,
+      segmentation = segmentation,
+      center = grid_center
+    ))
   }
 }

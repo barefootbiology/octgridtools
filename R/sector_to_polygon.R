@@ -14,8 +14,8 @@ sector_to_polygon <- function(radius_from, radius_to,
 
   # If the arc passes through 360,
   # adjust the angle_to accordingly
-  if(angle_from > angle_to) {
-    angle_to <- angle_to + 2*pi
+  if (angle_from > angle_to) {
+    angle_to <- angle_to + 2 * pi
   }
 
   # Corners (counterclockwise): A, B, C, D
@@ -25,24 +25,26 @@ sector_to_polygon <- function(radius_from, radius_to,
   # D -> A: arc
 
   # A <- center[1] + radius_from * cos(angle_from)
-  BC <- arc(from = angle_from, to = angle_to,
-            radius = radius_to,
-            center = center, n_points = n_points) %>%
+  BC <- arc(
+    from = angle_from, to = angle_to,
+    radius = radius_to,
+    center = center, n_points = n_points
+  ) %>%
     mutate(segment_id = "BC")
 
   sector <- BC
 
-  if(radius_from > 0) {
-    DA <- arc(from = angle_to, to = angle_from,
-              radius = radius_from,
-              center = center, n_points = n_points) %>%
-      mutate(segment_id ="DA")
+  if (radius_from > 0) {
+    DA <- arc(
+      from = angle_to, to = angle_from,
+      radius = radius_from,
+      center = center, n_points = n_points
+    ) %>%
+      mutate(segment_id = "DA")
 
     sector <- bind_rows(sector, DA)
   }
 
-  sector <- sector %>%
+  sector %>%
     mutate(sector_id = sector_id)
-
-  return(sector)
 }

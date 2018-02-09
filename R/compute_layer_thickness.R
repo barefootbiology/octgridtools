@@ -18,10 +18,11 @@ compute_layer_thickness <- function(seg) {
     filter(!is.na(thickness_voxels)) %>%
     # Convert thickness to millimeters
     mutate(thickness_um = thickness_voxels *
-             seg$info$voxel_size_y * 1000) %>%
+      seg$info$voxel_size_y * 1000) %>%
     ungroup() %>%
-    mutate(x = ascan_id * seg$info$voxel_size_x,
-           y = bscan_id * seg$info$voxel_size_z) %>%
-    select(layer_y_order, ascan_id, x, bscan_id, y, thickness_um) %>%
-    return()
+    mutate(
+      x = ascan_id * seg$info$voxel_size_x,
+      y = bscan_id * seg$info$voxel_size_z
+    ) %>%
+    select(layer_y_order, ascan_id, x, bscan_id, y, thickness_um)
 }

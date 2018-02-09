@@ -8,9 +8,8 @@
 make_points <- function(df, x = "x", y = "y") {
   df %>%
     select_(x, y) %>%
-    as.data.frame %>%
+    as.data.frame() %>%
     as.matrix() %>%
     coordinates() %>%
-    SpatialPoints() %>%
-    return()
+    SpatialPoints()
 }

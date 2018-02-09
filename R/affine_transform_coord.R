@@ -11,12 +11,13 @@ affine_transform_coord <- function(df, coords = c("x", "y"), affine) {
 
   # TASK: This could probably be updated, just incase the coords vector includes
   #       a column named "v1"
-  df[, coords] <- affine %*% t(as.matrix(df[, coords] %>%
-                         mutate(v1 = 1))) %>%
+  df[, coords] <-
+    affine %*% t(as.matrix(df[, coords] %>%
+      mutate(v1 = 1))) %>%
     t() %>%
     as.data.frame() %>%
     set_names(c(coords, "v1")) %>%
     select(-v1)
 
-  return(df)
+  df
 }

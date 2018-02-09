@@ -10,10 +10,14 @@ summarize_region_thickness <- function(pts_reg, reg_centers) {
     select(-x, -y) %>%
     filter(!is.na(sector_id)) %>%
     group_by(layer_y_order, sector_id) %>%
-    dplyr::summarize(thickness_um_mean = mean(thickness_um),
-                     thickness_um_sd = sd(thickness_um)) %>%
+    dplyr::summarize(
+      thickness_um_mean = mean(thickness_um),
+      thickness_um_sd = sd(thickness_um)
+    ) %>%
     ungroup() %>%
     full_join(reg_centers) %>%
-    dplyr::mutate(thickness_um_mean_label = sprintf("%.2f",
-                                                    thickness_um_mean))
+    dplyr::mutate(thickness_um_mean_label = sprintf(
+      "%.2f",
+      thickness_um_mean
+    ))
 }
