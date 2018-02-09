@@ -11,7 +11,8 @@ analyze_thickness <- function(segmentation_file,
                                    grid_center_file,
                                    grid_regions,
                                    layer_definition,
-                                   return_objects = FALSE) {
+                                   return_objects = FALSE,
+                              flip_region = "OD") {
 
   # IRA segmentation surfaces
   segmentation <- read_segmentation_xml(segmentation_file)
@@ -28,26 +29,24 @@ analyze_thickness <- function(segmentation_file,
   center_x <- center_x_voxel * segmentation$info$voxel_size_x
   center_z <- center_z_voxel * segmentation$info$voxel_size_z
 
+  # TASK: QUESTION: Does this matrix only apply to the ETDRS grid or to any
+  #       grid?
+  # NOTE: This approach will fail for downsampled VOL files, as the laterality
+  #       is lost!
+  # TASK: Rework this so that I don't have to perform this flip here.
+  laterality <- grid_center[["scan_characteristics"]][["laterality"]][[1]]
 
-  affine_matrix <- matrix(c(1, 0, center_x,
+  flip_y <- if_else(flip_region == laterality, 1, -1)
+
+  affine_matrix <- matrix(c(flip_y, 0, center_x,
                             0, -1, center_z,
                             0, 0, 1),
                           byrow = TRUE, ncol = 3)
 
-  # Create the grid in millimeter coordinates.
   # Using affine transformation, flip the coordinates about the origin on
   # the vertical axis, then translate the coordinates to the foveal
   # coordinates (center_x, center_y).
-
   grid_regions_segments <- grid_regions %>%
-    # # TASK: Replace this affine transformation with a simpler matrix
-    # #       multiplication
-    # by_row(~affine_transform_coord(x = .$x,
-    #                              y = .$y,
-    #                              affine = affine_matrix),
-    #      .collate = "cols") %>%
-    # select(-x, -y) %>%
-    # rename(x = x1, y = y1)
     affine_transform_coord(c("x", "y"), affine = affine_matrix)
 
   reg_centers <- grid_regions_segments %>%
