@@ -22,5 +22,7 @@ generate_grid_sectors <- function(grid_reg, center_x, center_y) {
       sector_id = .$etdrs_region,
       center = c(center_x, center_y)
     )) %>%
-    ungroup()
+    ungroup() %>%
+    rename(.cell_id = sector_id, .node_id = id) %>%
+    select(.cell_id, .node_id, x, y)
 }

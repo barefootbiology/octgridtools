@@ -7,9 +7,10 @@
 #' @importFrom scales rescale
 #' @importFrom magrittr %>%
 #' @importFrom tibble tibble
+#' @importFrom purrrlyr by_row
 generate_grid_rectangles <- function(center_x, center_y, nrow, ncol, width) {
   tibble(
-    region_id = 1:(nrow * ncol),
+    .cell_id = 1:(nrow * ncol),
     row_id = rep(1:nrow, each = ncol),
     col_id = rep(1:ncol, times = nrow)
   ) %>%
@@ -17,14 +18,14 @@ generate_grid_rectangles <- function(center_x, center_y, nrow, ncol, width) {
       x = col_id * width,
       y = row_id * width
     ) %>%
-    mutate(x = rescale(
+    mutate(.x = rescale(
       x = x,
       to = c(
         (center_x - (width * (ncol - 1)) / 2),
         (center_x + (width * (ncol - 1)) / 2)
       )
     )) %>%
-    mutate(y = rescale(
+    mutate(.y = rescale(
       x = y,
       to = c(
         (center_y - (width * (ncol - 1)) / 2),
@@ -32,9 +33,18 @@ generate_grid_rectangles <- function(center_x, center_y, nrow, ncol, width) {
       )
     )) %>%
     mutate(
-      xmin = x - (width / 2),
-      ymin = y - (width / 2),
-      xmax = x + (width / 2),
-      ymax = y + (width / 2)
-    )
+      xmin = .x - (width / 2),
+      ymin = .y - (width / 2),
+      xmax = .x + (width / 2),
+      ymax = .y + (width / 2)
+    ) %>%
+    select(-x, -y) %>%
+    by_row(
+      ~rectangle_to_polygon(.x$xmin, .x$xmax, .x$ymin, .x$ymax),
+      .collate = "rows"
+    ) %>%
+    group_by(.cell_id) %>%
+    mutate(.node_id = 1:n()) %>%
+    ungroup() %>%
+    select(.cell_id, .node_id, x, y, row_id, col_id)
 }

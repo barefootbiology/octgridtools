@@ -12,7 +12,7 @@ generate_hexagon_segments <- function(center_x, center_y, radius=1, rotation=0) 
     radius = radius,
     rotation = rotation
   ) %>%
-    select(center_x, center_y, node_id, x, y) %>%
+    select(.node_id, x, y) %>%
     mutate(x_end = lead(x), y_end = lead(y)) %>%
     filter(!is.na(x_end))
 }

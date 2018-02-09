@@ -35,7 +35,7 @@ sector_to_polygon <- function(radius_from, radius_to,
   sector <- BC
 
   if (radius_from > 0) {
-    DA <- degenerate_arc(
+    DA <- generate_arc(
       from = angle_to, to = angle_from,
       radius = radius_from,
       center = center, n_points = n_points
