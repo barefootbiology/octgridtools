@@ -1,0 +1,172 @@
+---
+title: "Introduction to the octgridtools package"
+author: "S. Scott Whitmore"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+
+library(octgridtools)
+library(heyexr)
+library(tidyverse)
+```
+
+`octgridtools` provides functions to (a) generate grids and (b) summarize 
+spatial data using those grids. I developed the package to work specifically
+with data from OCT segmentation, but most of the functions should be applicable
+to any situation where you may want to analyze data using a grid.
+
+# Creating grids
+
+Currently, we have functions for working with three types of grids: sectoral,
+rectangular, and hexagonal. Sectoral grids are currently specified by a TSV
+file.
+
+```{r createExamples}
+# Sectoral grid
+grid_file <- system.file(
+  "extdata", "Grid_Circle_Macula_ETDRS.txt",
+  package = "octgridtools"
+)
+
+grid_sectors <-
+  generate_grid_sectors(
+    read_tsv(grid_file),
+    center_x = 0,
+    center_y = 0
+  ) %>%
+  mutate(type = "sectors")
+```
+
+Rectangular and hexagonal grids can be constructed directly:
+
+```{r createRectangles}
+grid_rectangles <-
+  generate_grid_rectangles(
+    center_x = 0,
+    center_y = 0,
+    nrow = 11,
+    ncol = 11,
+    width = 6 / 11
+  ) %>%
+  mutate(type = "rectangles")
+
+grid_hexagons <-
+  generate_grid_hexagons(
+    nrow = 11,
+    ncol = 10,
+    radius = 6/11
+  ) %>%
+  mutate(type = "hexagons") %>%
+  # TASK: Move this into generate_grid_hexagons
+  mutate(
+    x = scales::rescale(x, to = c(-3, 3)),
+    y = scales::rescale(y, to = c(-3, 3))
+  )
+```
+
+
+Grids are stored as tibbles. Each grid contains one or more cells, and each cell
+is made up of three or more nodes, defining a polygon. All grids must contain
+the following columns:
+
+* `.cell_id`
+* `.node_id`
+* `x`
+* `y`
+
+Other columns are optional.
+
+* `row_id`
+* `col_id`
+
+# Plotting grids
+
+Standard column makes it easy to combine multiple grids:
+
+```{r figHorizontal, fig.width=7}
+grid_examples <- bind_rows(grid_sectors, grid_rectangles, grid_hexagons)
+
+p_grids <- 
+  grid_examples %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_polygon(
+    aes(group = paste(type, .cell_id), 
+        color = type),
+    fill = NA
+  ) +
+  coord_equal()
+
+p_grids + facet_grid(~type)
+```
+
+```{r figOverlay, fig.width=7}
+p_grids
+```
+
+When generating plots, it can be helpful to label each cell. To calculate the 
+center of each cell, compute the mean `x` and `y` value for each cell.
+
+```{r figCenters, fig.width = 8, fig.height = 4}
+centers <- 
+  grid_examples %>%
+  group_by(type, .cell_id) %>%
+  dplyr::summarize(x = mean(x), y = mean(y)) %>%
+  ungroup()
+
+grid_examples %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_polygon(aes(group = paste(type, .cell_id)),
+               color = "black", 
+               fill = NA) +
+  geom_text(data = centers,
+            mapping = aes(x = x, 
+                          y = y, 
+                          label = .cell_id, 
+                          color = as.factor(.cell_id)),
+            fontface = "bold",
+            size = 2.5) +
+  scale_color_discrete(guide = "none") +
+  coord_equal() +
+  facet_grid(~type)
+
+# TASK: Ensure consistent number ordering for the rectangular and hexagonal
+#       grids.
+```
+
+# Transforming grids
+
+Grid can be transformed using (homogeneous) affine matrices or using the
+`scales::rescale` function to scale or move the bounding box of the grid.
+
+# Using grids to summarize or transform spatially organized data
+
+1. Find overlaps between the coordinates of the grid cells and the data.
+2. Group the data by their cells.
+3. Perform summary statistics on the grouped data.
+4. Merge the summary statistics with the original grid coordinates.
+5. Display the grid, mapping summaries to grid polygon aesthetics.
+
+In stead of summary statistics, you could perform other kinds of transforms on
+the data within a cell region, and re-dispay the data. 
+
+# Important points to consider when using grids to summarize data
+
+* Is the size of your grid cells smaller than the resolution of your data?
+* Does the orientation of your grid match the orientation of your data? How is
+your image or map oriented?
+
+
+
+
