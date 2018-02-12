@@ -24,5 +24,7 @@ compute_layer_thickness <- function(seg) {
       x = ascan_id * seg$info$voxel_size_x,
       y = bscan_id * seg$info$voxel_size_z
     ) %>%
+    # NOTE: The output is now being referenced to the x, y of the
+    # grid, not the x, z of the volume.
     select(layer_y_order, ascan_id, x, bscan_id, y, thickness_um)
 }

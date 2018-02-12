@@ -7,17 +7,17 @@
 #' @importFrom sp coordinates Polygon Polygons SpatialPolygons
 #' @importFrom sp SpatialPolygonsDataFrame
 #' @importFrom magrittr %>%
-region_segments_to_spatialpolygons <- function(reg_seg) {
+cells_to_spatialpolygons <- function(grid) {
   # In order to make SpatialPolygons, we need to close the polygon by
   # repeating the first point.
-  reg_seg_rep <- reg_seg %>%
-    group_by(sector_id) %>%
+  reg_seg_rep <- grid %>%
+    group_by(.cell_id) %>%
     do(.repeat_first(.)) %>%
     ungroup()
 
   reg_seg_rep %>%
     by(
-      reg_seg_rep$sector_id,
+      reg_seg_rep$.cell_id,
       function(x) x %>%
           select(x, y) %>%
           as.data.frame() %>%
@@ -25,12 +25,12 @@ region_segments_to_spatialpolygons <- function(reg_seg) {
           coordinates() %>%
           Polygon(hole = FALSE) %>%
           list() %>%
-          Polygons(ID = x[1, "sector_id"])
+          Polygons(ID = x[1, ".cell_id"])
     ) %>%
     unlist() %>%
     SpatialPolygons() %>%
-    SpatialPolygonsDataFrame(reg_seg %>%
-      select(sector_id) %>%
+    SpatialPolygonsDataFrame(grid %>%
+      select(.cell_id) %>%
       distinct() %>%
       as.data.frame())
 }
