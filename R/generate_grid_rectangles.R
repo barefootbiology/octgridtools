@@ -8,7 +8,7 @@
 #' @importFrom magrittr %>%
 #' @importFrom tibble tibble
 #' @importFrom purrrlyr by_row
-generate_grid_rectangles <- function(center_x, center_y, nrow, ncol, width) {
+generate_grid_rectangles <- function(center_x, center_y, nrow, ncol, width, height = width) {
   tibble(
     .cell_id = 1:(nrow * ncol),
     row_id = rep(1:nrow, each = ncol),
@@ -16,7 +16,7 @@ generate_grid_rectangles <- function(center_x, center_y, nrow, ncol, width) {
   ) %>%
     mutate(
       x = col_id * width,
-      y = row_id * width
+      y = row_id * height
     ) %>%
     mutate(.x = rescale(
       x = x,
@@ -28,15 +28,15 @@ generate_grid_rectangles <- function(center_x, center_y, nrow, ncol, width) {
     mutate(.y = rescale(
       x = y,
       to = c(
-        (center_y - (width * (ncol - 1)) / 2),
-        (center_y + (width * (ncol - 1)) / 2)
+        (center_y - (height * (ncol - 1)) / 2),
+        (center_y + (height * (ncol - 1)) / 2)
       )
     )) %>%
     mutate(
       xmin = .x - (width / 2),
-      ymin = .y - (width / 2),
+      ymin = .y - (height / 2),
       xmax = .x + (width / 2),
-      ymax = .y + (width / 2)
+      ymax = .y + (height / 2)
     ) %>%
     select(-x, -y) %>%
     by_row(

@@ -9,7 +9,7 @@ sector_to_polygon <- function(radius_from, radius_to,
                               angle_from, angle_to,
                               center = c(0, 0),
                               n_points = 100,
-                              sector_id = NA,
+                              cell_id = NA,
                               is_circle = FALSE) {
 
   # If the arc passes through 360,
@@ -46,5 +46,5 @@ sector_to_polygon <- function(radius_from, radius_to,
   }
 
   sector %>%
-    mutate(sector_id = sector_id)
+    mutate(.cell_id = cell_id)
 }

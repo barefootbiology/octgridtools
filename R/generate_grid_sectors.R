@@ -19,10 +19,10 @@ generate_grid_sectors <- function(grid_reg, center_x, center_y) {
     do(sector_to_polygon(
       radius_from = .$radius_from, radius_to = .$radius_to,
       angle_from = .$angle_from, angle_to = .$angle_to,
-      sector_id = .$etdrs_region,
+      cell_id = .$etdrs_region,
       center = c(center_x, center_y)
     )) %>%
     ungroup() %>%
-    rename(.cell_id = sector_id, .node_id = id) %>%
+    rename(.node_id = id) %>%
     select(.cell_id, .node_id, x, y)
 }

@@ -145,6 +145,16 @@ grid_examples %>%
 #       grids.
 ```
 
+
+# Keeping track of scaling and coordinate spaces
+
+TASK: Write up vignette for heyexr detailing the 0-based (OCTExplorer) vs. 
+1-based system (R matrices, tables), plotting from bottom left vs. top left 
+(via `scale_y_reverse()`). Summarize that information here.
+
+* DISCUSS VOXEL SPACE VS ANATOMIC (METRIC) SPACE VS. SLO SPACE (MAY REQUIRE 
+ROTATION OF VOXEL SPACE BSCAN COORDINATES.)
+
 # Transforming grids
 
 Grid can be transformed using (homogeneous) affine matrices or using the
