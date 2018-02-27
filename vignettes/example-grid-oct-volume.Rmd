@@ -1,0 +1,859 @@
+---
+title: "Working with grids and OCT volumes"
+author: "S. Scott Whitmore"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE,
+                      message = FALSE)
+knitr::opts_knit$set(root.dir = here::here())
+
+setwd(here::here())
+
+library(heyexr)
+library(octgridtools)
+library(tidyverse)
+library(patchwork)
+library(broom)
+
+source_dir <- function(.path) {
+  list.files(path = .path, 
+           pattern = ".R",
+           full.names = TRUE) %>%
+  purrr::walk(~source(file = .x))
+}
+
+source_dir("~/stonelab/packages/octgridtools/R_to_incorporate/")
+
+
+# Specify the location of an example OCT
+example_vol_file <- "data/controls/segmentation_v3-8-0_2018-02-05/UI_SF_SPT_000501_001_001_001_ORIGINAL/UI_SF_SPT_000501_001_001_001_ORIGINAL_OCT_Iowa.VOL"
+
+example_segmentation_file <- "data/controls/segmentation_v3-8-0_2018-02-05/UI_SF_SPT_000501_001_001_001_ORIGINAL/UI_SF_SPT_000501_001_001_001_ORIGINAL_Surfaces_Iowa.xml"
+
+example_grid_center_file <- "data/controls/segmentation_v3-8-0_2018-02-05/UI_SF_SPT_000501_001_001_001_ORIGINAL/UI_SF_SPT_000501_001_001_001_ORIGINAL_GridCenter_Iowa.xml"
+
+example <- read_oct_files(volume = example_vol_file,
+                          segmentation = example_segmentation_file,
+                          grid_center = example_grid_center_file)
+
+layer_definition_file <- "data/layer_map_3-8-0.xlsx"
+
+layer_definition <- readxl::read_excel(layer_definition_file) %>%
+  mutate(layer = factor(layer, levels = layer))
+```
+
+# Table of Contents
+
+1. Introduction to optical coherence tomography
+    a. Spectral domain OCT: SD-OCT
+    b. Swept-source OCT: SS-OCT
+    c. Volumetric data (x, y, z): anisotropy
+2. Data files
+    a. Heidelberg VOL files: metadata + SLO + B-scan metadata + volume data
+    b. Carl Zeiss DICOM files: volume data
+        i. Volume data
+        ii. Volumetric angiography data
+3. Segmentation
+    a. Heidelberg segmentation
+    b. Iowa Reference Algorithms/OCTExplorer
+    c. Representing segmentation surfaces and layers in B-Scans, adjusting intensity
+    d. Considerations on segmentation quality, manual adjustment of layers
+5. Computing on volume data
+    a. Using segmentation to slice volumes
+    b. Computing en face matrices (images) using sliced volumes
+        i. Thickness maps
+        ii. Depth maps
+        iii. En face structural images
+        iv. Combining structure and depth using HSV colors
+    c. Overlaying en face images on SLO
+6. Statistics and visualization with groups of OCTs
+    a. Voxel space and anatomic space: Translation, centering, scaling
+    b. Using bins and grids for consistent comparisons
+    c. Computing stats across groups of samples
+    d. Displaying stats as heatmapped B-scans
+7. Projecting data in three dimensions
+    a. Surface stacks
+    b. Volume sliced with computed or retrieved texture maps
+    c. Filtering potentially noisy values for simple segmentation of angio data
+    d. Combining angio with volume data
+    e. Voxel ray tracing, anyone?
+8. Exporting data
+    a. For use in Fiji (Fiji Is Just ImageJ)
+    b. To view 3D objects using WebGL
+
+
+# Introduction
+
+Let's walk through the pieces of a Heidelberg VOL file.
+
+* Every file starts with a **header** ...
+
+* After the header comes the **scanning laser ophthalmoscopy (SLO) image.** The 
+provides an en face, infrared image of the retina. [TASK: What does the infrared
+wavelength reveal?] 
+
+* The remainder of the file is composed of **b-scan headers** and 
+**b-scan data**. [TASK: Where does the automatic segmentation appear?]
+
+# Image types
+
+* SLO (x, y)
+
+* Volume data (x, y, z)
+
+* En face images (x, y) computed using segmentation surfaces and the volume data
+
+* B-scans (x, z)
+
+* C-scans (y, z) [I think this is what you call a cross-section through 
+b-scans!]
+
+# Scanning laser ophthalmoscopy (SLO) image
+
+Of note, the anatomic superior portion of the image is actually at the bottom of
+the dataset. To correct for this, we have reversed the `y` axis scale.
+
+```{r }
+p_slo <- heyexr::construct_slo(example$volume, 
+                      low_color = "black", 
+                      high_color = "white", 
+                      scale_bar = FALSE, 
+                      scale_length = 200, 
+                      inset_percentage = .10, 
+                      draw_margins = TRUE)
+
+p_slo
+```
+
+
+# B-scans and segmentation surfaces
+
+B-scans are at the heart of the OCT data. (SLO is captured by the Heidelberg
+Spectralis, but isn't the OCT proper.) We can show the position of the b-scans 
+on the SLO image.
+
+```{r }
+p_slo +
+  geom_segment(data = example$volume$bscan_headers,
+               mapping = aes(group = bscan,
+                             x = start_x_pixels, 
+                             y = start_y_pixels,
+                             xend = end_x_pixels, 
+                             yend = end_y_pixels),
+               color = "green", 
+               alpha = 0.4) +
+  geom_text(data = example$volume$bscan_headers %>%
+               filter(bscan %in% seq(from = 1, to = 61, by = 3)),
+            mapping = aes(label = bscan,
+                          x = start_x_pixels,
+                          y = start_y_pixels),
+            color = "white", 
+            size = 2.5,
+            hjust = 0,
+            fontface = "bold")
+
+test_bscan_id <- 30
+```
+
+# B-scan with segmentation surfaces
+
+Here's what b-scan `r test_bscan_id` looks like with the automatic segmentation
+included in the VOL file overlaid:
+
+```{r }
+construct_bscan(example$volume, bn = test_bscan_id) +
+  geom_line(data = get_segmentation(example$volume) %>% filter(b_scan == 30),
+            mapping = aes(x = x, 
+                          y = z, 
+                          group = surface, 
+                          color = surface),
+            alpha = 0.75) +
+  scale_color_brewer(palette = "Set1") +
+  coord_equal()
+```
+
+Notice that Heidelberg only includes the NFL surface for radial scans.
+
+
+# Iowa Reference Algorithms
+
+But we definitely aren't limited to using the Heidelberg segmentation. The
+Iowa Reference Algorithms, bundled with OCTExplorer, identifies 11 or 12 
+surfaces (10 or 11 layers) depending on the version you are using. Currently,
+the heyexr package is designed around OCTExplorer v 3.8.0 output.
+
+TASK: Standardize the layer segmentation coordinates between Heidelberg and
+IRA/OCTExplorer (x, y, value, surface_id, etc.).
+
+```{r }
+segmentation_ira <- example$segmentation$layers %>% 
+              left_join(get_undefined(example$segmentation)) %>%
+              inner_join(layer_definition, 
+                         by = c("layer_y_order" = "surface")) %>%
+  mutate(is_defined = if_else(is.na(is_defined), TRUE, FALSE))
+
+construct_bscan(example$volume, bn = test_bscan_id) +
+  geom_line(data = segmentation_ira %>%
+              filter(bscan_id == 30),
+            mapping = aes(x = ascan_id, 
+                          y = value, 
+                          group = layer, 
+                          color = layer),
+            alpha = 0.75) +
+  scale_color_brewer(palette = "Paired") +
+  coord_equal()
+```
+
+
+***
+
+You'll notice that toward the edges, the segmentation appears wavy. The
+IRA can flag specific a-scans as "undefined", identicating that the segmentation
+is uncertain in those areas. We can filter the segmentation to remove the 
+"undefined" surfaces:
+
+```{r }
+construct_bscan(example$volume, bn = test_bscan_id) +
+  geom_line(data = segmentation_ira %>%
+              filter(bscan_id == 30) %>%
+              filter(is_defined),
+            mapping = aes(x = ascan_id, 
+                          y = value, 
+                          group = layer, 
+                          color = layer),
+            alpha = 0.75) +
+  scale_color_brewer(palette = "Paired") +
+  coord_equal()
+```
+
+# Cross-sections through b-scans
+
+Alternatively, we can construct cross-sections through b-scans, cutting along
+the y-axis of the volume.
+
+TASK: Write a `get_cross_section` function. [TASK: What is the technical name
+for this slice?]
+
+
+# En face computed images
+
+We can also compute en face images. For example, here's an en face image 
+generated by summing along each a-scan:
+
+```{r }
+vol_data <- example$volume$bscan_images 
+ 
+enface_total <- vol_data %>% 
+  apply(c(1,2), sum, na.rm = TRUE) %>% 
+  reshape2::melt() %>% 
+  as_tibble() %>%
+  set_names(c("x", "y", "intensity")) 
+
+aspect_ratio <- get_enface_aspect(example$volume)
+  
+enface_total %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_raster(aes(fill = intensity)) +
+  coord_fixed(ratio = aspect_ratio)
+```
+
+Notice that the structural en face image based on the total volume doesn't need 
+to be reversed on the y-axis. The bscans are ordered in the VOL file from 
+inferior to superior.
+
+# Surface maps
+
+We can create basic surface maps of the segmentation several ways:
+
+```{r }
+# The surface map of the ILM
+create_seg_array(example$segmentation)[ , , 2] %>% 
+  reshape2::melt() %>% 
+  as_tibble() %>% 
+  set_names(c("x", "y", "z")) %>% 
+  ggplot(aes(x = x, y = y)) + 
+  geom_raster(aes(fill = z))  +
+  coord_fixed(ratio = aspect_ratio)
+```
+
+
+# Total retinal thickness
+
+We can compute total retinal thickness using the segmentation stored in the VOL
+file. Alternatively, we can use the segmentation from IRA/OCTExplorer.
+
+```{r }
+enface_retinal_thickness_heidelberg <- 
+  example$volume$seg_array[, , c(1, 2)] %>% 
+  compute_thickness(scale_value = example$volume$header$scale_z * 1000) 
+
+enface_retinal_thickness_octexplorer <- 
+  create_seg_array(example$segmentation)[ , , c(2, 12) ] %>%
+  compute_thickness(na_undefined = get_undefined(example$segmentation),
+                    scale_value = example$segmentation$info$voxel_size_y * 1000) 
+
+enface_retinal_thickness <- 
+  bind_rows(
+    enface_retinal_thickness_octexplorer %>%
+      mutate(algorithm = "Iowa"),
+    enface_retinal_thickness_heidelberg %>%
+      mutate(algorithm = "Heidelberg")
+  )
+
+enface_retinal_thickness %>%
+  ggplot(aes(x = x, y = y)) + 
+  geom_raster(aes(fill = thickness_scaled)) +
+  scale_fill_gradientn(name = "thickness\n(µm)",
+                       colours = rainbow(n = 10)) +
+  facet_grid(~ algorithm) +
+  coord_fixed(ratio = aspect_ratio)
+
+
+# Notice that missing (NA) values are shown in gray. 
+# 
+# Note well: The ordering of b-scans from the Heidelberg VOL file and the ordering
+# of the IRA/OCTExplorer segmentation XML are opposite. In `heyexr`, I reorder the 
+# b-scan IDs for the IRA segmentation to match the Heidelberg VOL order.
+```
+
+
+# Difference maps
+
+We can compare the performance of both retinal thickness measures:
+
+```{r }
+enface_retinal_thickness_difference <- enface_retinal_thickness %>% 
+  select(x, y, thickness_scaled, algorithm) %>% 
+  spread(algorithm, thickness_scaled) %>% 
+  mutate(difference = Heidelberg - Iowa) 
+
+p_scatterplot <- enface_retinal_thickness_difference %>%
+  ggplot(aes(x = Heidelberg, y = Iowa)) +
+  geom_abline(slope = 1, color = "red") +
+  geom_point(size = 0.2, alpha = 0.25) +
+  coord_equal()
+
+p_difference_map <- enface_retinal_thickness_difference %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_raster(aes(fill = difference)) +
+  scale_fill_gradient2(name = "thickness difference\nHeidelberg - Iowa\n(µm)",
+                       low = "blue", mid = "white", high = "red") +
+  coord_fixed(ratio = aspect_ratio)
+
+p_difference_map + p_scatterplot + plot_layout(nrow = 1, widths = c(4, 3))
+```
+
+# Overlaying en face computed images on the SLO
+
+We can overlay our en face images back onto the SLO image. This kind of overlay 
+can be used for any type of array-based, raster-type computation, for example, 
+thickness maps, deviations, structural enface images, or depth 
+maps.
+
+```{r }
+p_thickness_octexplorer_alpha <- enface_retinal_thickness_octexplorer %>%
+  ggplot(aes(x = x, y = y)) + 
+  geom_raster(aes(fill = thickness_scaled),
+              alpha = 0.5) +
+  scale_fill_gradientn(name = "thickness\n(µm)",
+                       colours = rainbow(n = 10), 
+                       na.value = "transparent") +
+  # Be sure to remove the extra padding!
+  scale_x_continuous(expand = c(0,0)) + 
+  scale_y_continuous(expand = c(0,0))
+
+thickness_legend <- get_legend(p_thickness_octexplorer_alpha)
+
+p_slo_overlay <- p_slo + 
+  annotation_overlay(plot_overlay = p_thickness_octexplorer_alpha + theme_nude,
+                     volume = example$volume) 
+
+gridExtra::grid.arrange(p_slo_overlay, 
+                        thickness_legend, 
+                        ncol = 2, 
+                        widths = c(5, 1))
+
+# I still need to adjust the bounding box to take into account potential 
+# rotation of the b-scans (for VOL files exported as unregistered only).
+# 
+# By default, missing values are coded as a dark gray color by ggplot2. We can
+# remove those values by filtering the tibble prior to creating the overlay. 
+# However, if an entire row or column of data were missing, that would reduce the
+# size of the data in the PNG, meaning we would accidentally stretch the thickness
+# values further across the SLO, misrepresenting the data. To bypass this problem,
+# set `na.value = "transparent"` in the `scale_fill_*` function.
+```
+
+***
+
+Note that the b-scan lines indicate the middle of the voxels:
+
+```{r }
+p_slo_overlay_bscans <- p_slo_overlay + 
+    geom_segment(data = example$volume$bscan_headers,
+               mapping = aes(group = bscan,
+                             x = start_x_pixels, 
+                             y = start_y_pixels,
+                             xend = end_x_pixels, 
+                             yend = end_y_pixels),
+               color = "green", 
+               alpha = 0.4)
+
+gridExtra::grid.arrange(p_slo_overlay_bscans, 
+                        thickness_legend, 
+                        ncol = 2, 
+                        widths = c(5, 1))
+```
+
+*** 
+
+We can compute en face images using the voxels between difference 
+segmentation surfaces. To do this, we take the segmentation surfaces and 
+construct another volume of the same dimensions. We'll use this second volume
+as a mask to pull out (slice) voxels from the OCT volume. For example, here is
+a b-scan showing the all the layers. Note that the layers start at 0 (between
+the top of the scan and the first [ILM] layer) and goes 1 beyond the number of 
+surfaces (RPE to base of scan).
+
+```{r }
+# 2018-02-19  Monday
+# 
+# TASK: Make a function that can pull out the voxels between surfaces, as needed
+#       for computing structural en face images.
+# NOTE: The function needs to handle any segmentation array.
+
+# source("R/create_seg_array.R")
+
+seg_volume <- expand_surfaces_to_volume(
+    surface_array = iowa_segmentation_to_array(example$segmentation),
+    vol_dim = dim(example$volume$bscan_images)
+  )
+
+seg_bscan_layers <- 
+  seg_volume[ , 30, ] %>%
+  reshape2::melt() %>%
+  set_names(c("x", "z", "layer")) %>%
+  as_tibble()
+
+seg_bscan_layers_centers <-
+  seg_bscan_layers %>%
+  group_by(layer) %>%
+  summarize(x = median(x), z = median(z))
+
+seg_bscan_layers %>%     
+  ggplot(aes(x = x, y = z)) +
+  geom_raster(aes(fill = as.factor(layer))) +
+  scale_fill_brewer(name = "layer",
+                    palette = "Set3") +
+  geom_text(data = seg_bscan_layers_centers,
+            mapping = aes(x = x, y = z, label = layer),
+            fontface = "bold") +
+  scale_y_reverse()
+```
+
+***
+
+You can then select layer indices by to create slices.
+
+```{r }
+surface_array <- iowa_segmentation_to_array(example$segmentation)
+
+slicer_full_thickness <- create_slicer(seg_volume = seg_volume, 1, 10)
+
+slicer_full_thickness[ , 30, ] %>%
+  reshape2::melt() %>%
+  set_names(c("x", "z", "intensity")) %>%
+  as_tibble() %>%
+  ggplot(aes(x = x, y = z)) +
+  geom_raster(aes(fill = intensity)) +
+  scale_y_reverse()
+```
+
+***
+
+And here are the voxels it sliced:
+
+```{r }
+volume_sliced <- example$volume$bscan_images * slicer_full_thickness
+
+volume_sliced[ , 30, ] %>%
+  reshape2::melt() %>%
+  set_names(c("x", "z", "intensity")) %>%
+  as_tibble() %>%
+  mutate(intensity0 = if_else(is.na(intensity), 
+                             0,
+                             intensity)) %>%
+  mutate(intensity0 = heyexr::spline_correction(intensity0)) %>%
+  mutate(intensity = if_else(is.na(intensity), 
+                             as.numeric(NA),
+                             intensity0)) %>%
+  ggplot(aes(x = x, y = z)) +
+  geom_raster(aes(fill = intensity)) +
+  scale_y_reverse()
+```
+
+***
+
+Once we have sliced voxels, we can now compute statistics for every a-scan to
+compute a new en face image:
+
+```{r }
+p_enface_full_thickness <- volume_sliced %>%
+  spline_correction_array() %>%
+  apply(c(1,2), sum, na.rm = TRUE) %>%
+  reshape2::melt() %>%
+  set_names(c("x", "y", "value")) %>%
+  as_tibble() %>%
+  full_join(get_undefined(example$segmentation)) %>%
+  mutate(is_defined = if_else(is.na(is_defined), TRUE, is_defined)) %>%
+  mutate(value = if_else(is_defined, value, as.numeric(NA))) %>%
+  
+  ggplot(aes(x = x, y = y)) +
+  geom_raster(aes(fill = value),
+              alpha = 1) +
+  scale_fill_gradient(low = "blue", high = "red") +
+  scale_x_continuous(expand = c(0,0)) + 
+  scale_y_continuous(expand = c(0,0))  
+
+p_slo_overlay_enface <- p_slo + 
+  annotation_overlay(plot_overlay = p_enface_full_thickness + theme_nude,
+                     volume = example$volume) 
+
+p_slo_overlay_enface
+```
+
+***
+
+Alternatively, we can compute other kinds of representations using slicers.
+For example, we can compute the median intensity within a layer, then 
+show color the layer by that intensity:
+
+```{r }
+volume_median <- apply_volume(
+  volume = spline_correction_array(example$volume$bscan_images), 
+  seg_volume = seg_volume,
+  .fun = median,
+  na.rm = TRUE
+  )
+
+volume_median[ , 30, ] %>%
+  reshape2::melt() %>%
+  set_names(c("x", "z", "intensity")) %>%
+  as_tibble() %>%
+  ggplot(aes(x = x, y = z)) +
+  geom_raster(aes(fill = intensity)) +
+  scale_y_reverse() +
+  scale_fill_gradient(guide = "none",
+                      low = "black", 
+                      high = "white", 
+                      limits = c(0, 1))
+```
+
+***
+
+Contrast that image with the standard deviation:
+
+```{r }
+volume_sd <- apply_volume(
+  volume = spline_correction_array(example$volume$bscan_images), 
+  seg_volume = seg_volume,
+  .fun = sd,
+  na.rm = TRUE
+  )
+
+volume_sd[ , 30, ] %>%
+  reshape2::melt() %>%
+  set_names(c("x", "z", "intensity")) %>%
+  as_tibble() %>%
+  ggplot(aes(x = x, y = z)) +
+  geom_raster(aes(fill = intensity)) +
+  scale_y_reverse() +
+  scale_fill_gradient(low = "black", 
+                      high = "white")
+```
+
+Notice that here, to emphasize the relative differences between layers, we've
+adjusted the color scale.
+
+***
+
+We can also compute other functions across the regions and return a list of 
+objects (instead of returning another volume). For example, we can show the 
+distribution of intensities in each layer:
+
+```{r }
+
+layer_intensity_values <- map_volume(
+  volume = spline_correction_array(example$volume$bscan_images),
+  seg_volume = seg_volume,
+  .fun = c,
+  na.rm = TRUE
+  )  %>%
+  map_dfr(~tibble(intensity = .x),
+          .id = "layer_id") %>%
+  mutate(layer_id = as.factor(as.numeric(layer_id))) %>%
+  filter(layer_id %in% as.character(1:10)) 
+
+# layer_intensity_values %>%
+#   ggplot(aes(x = layer_id, y = intensity)) +
+#   geom_boxplot(aes(fill = layer_id)) +
+#   scale_fill_brewer(palette = "Paired") +
+#   coord_flip() 
+
+layer_intensity_values %>%
+  ggplot(aes(x = intensity)) +
+  geom_density(aes(fill = layer_id)) +
+  scale_fill_brewer(palette = "Paired") +
+  facet_grid(layer_id ~ .)
+```
+
+TASK: Re-work the enface related functions to be something like 
+`apply_volume_enface`. (Perhaps we should rename the `apply_volume` function
+to be `apply_volume_volume`, indicating that you are returning a volume.) OR 
+possibly use `apply_volume_xyz`, `apply_volume_xy`, etc.
+
+TASK: Write a function to merge the `undefined` values into the layer tibble.
+Then replace the redundant code throughout this document.
+
+TASK: Write functions to work summary statistics in 3D grids.
+
+TASK: Expand sections to illustrate how the concepts presented here can be 
+generalized to groups of samples. For example, you can compute statistics across
+multiple samples in a control group, then show how a given sample compares to 
+the controls. You can create heatmaps as well.
+
+# Flattening segmentation: Surfaces
+
+Segmentations can be effectively flattened in order to normalize the curvature
+to one of the surfaces. For example, sometimes it's desireable to flatten the
+layer representation by subtracting out the base of the RPE:
+
+```{r }
+layers_flattened <- example$segmentation$layers %>% 
+  full_join(get_undefined(example$segmentation)) %>%
+  mutate(is_defined = if_else(is.na(is_defined), TRUE, is_defined)) %>%
+  mutate(value = if_else(is_defined, value, as.numeric(NA))) %>%
+  filter(bscan_id == 30) %>%
+  group_by(bscan_id, ascan_id) %>% 
+  mutate(value_flattened = max(value) - value) %>%
+  ungroup() 
+
+layers_flattened %>% 
+  filter(bscan_id == 30) %>% 
+  ggplot(aes(x = ascan_id, y = value_flattened)) + 
+  geom_line(aes(group = layer_y_order, 
+                color = as.factor(layer_y_order))) +
+  scale_color_brewer(palette = "Paired")
+```
+
+Assuming you have good quality segmentation for a set of OCT images, you can
+compute averages as well.
+
+TASK: Show average control profiles here.
+
+# Flattening segmentation: Layers
+
+We can easily represent the layers as well. We'll plot from the top 
+of surface to the baseline. As long as the layers are ordered from ILM to RPE,
+they won't overplot each other:
+
+```{r }
+layers_flattened %>% 
+  filter(bscan_id == 30) %>% 
+  ggplot(aes(x = ascan_id, y = value_flattened)) + 
+  geom_line(aes(group = layer_y_order, 
+                color = as.factor(layer_y_order))) +  
+  geom_ribbon(aes(group = layer_y_order, 
+                  ymax = value_flattened,
+                  ymin = 0,
+                fill = as.factor(layer_y_order))) +
+  scale_fill_brewer(palette = "Paired") +
+  scale_color_brewer(palette = "Paired")
+```
+
+***
+
+TASK: Create a function out of the following code:
+
+```{r }
+grid_file <- system.file("extdata", "Grid_Circle_Macula_ETDRS.txt", 
+                         package = "octgridtools")
+
+etdrs_grid <- generate_grid_sectors(read_tsv(grid_file), 0, 0)
+
+etdrs_grid %>% 
+  ggplot(aes(x = x, y = y)) + 
+  geom_polygon(aes(group = .cell_id), 
+               fill = NA, 
+               color = "red") +
+  geom_text(data = etdrs_grid %>% 
+              group_by(.cell_id) %>% 
+              summarize(x = mean(x), y = mean(y)), 
+            mapping = aes(label = .cell_id)) + 
+  coord_equal()
+```
+
+```{r }
+# TASK: Write a function to create a slicer for a given volume by supplying a
+#       volume, a grid (flipped for OS if necessary), a center point, and an 
+#       appropriate scaling values.
+#       Consider that most grids are probably specified for SLO/anatomic 
+#       scales, so we might need to flip the grid along the horizontal axis
+#       before applying it to the volume.
+
+# Basic procedure:
+# 1. From the volume, get the 2D enface coordinates (x, y).
+# 2. Translate these coordinates into anatomic space.
+# 3. Intersect these coordinates with the grid cells in anatomic space.
+# 4. Map these intersections back to the original x, y coordinates of the 
+#    volume.
+# 5. Construct a volume with appropriate cell ID's as values in each voxel.
+
+# Volume in voxel space with scaling to anatomic space
+dims = dim(oct_data[[1]]$volume$bscan_images)
+
+
+
+scale_x = oct_data[[1]]$volume$header$scale_x
+scale_y = oct_data[[1]]$volume$header$distance
+
+# Center point in voxel space with scaling to anatomic space
+grid_center = oct_data[[1]]$grid_center
+
+
+volume_points <- expand.grid(vol_x = 1:dims[[1]], 
+                             vol_y = 1:dims[[2]]) %>%
+  as_tibble() %>%
+  mutate(vol_x_centered = vol_x - grid_center$center$x[[1]], 
+         vol_y_centered = vol_y - grid_center$center$z[[1]]) %>%
+  mutate(x = vol_x_centered * scale_x,
+         y = vol_y_centered * scale_y)
+
+# Anatomic space centered on zero
+grid = etdrs_grid
+
+
+
+
+# Get 2D (ascan, bscan) coordinates.
+# Center on 0 using the grid_center
+# Translate to anatomic scale
+# For all the points, intersect with grid_cells.
+# Bind the intersection information.
+# Combine with original space
+
+# Construct an result array the same dimensions as the original volume
+
+grid_transformed <- grid
+
+cells_sppolygons <- cells_to_spatialpolygons(grid_transformed)
+
+  # segmentation_thickness <- compute_layer_thickness(segmentation)
+
+volume_sppoints <- tibble_to_spatialpoints(volume_points)
+
+voxels_in_cells <- octgridtools:::find_sppoints_in_sppolygons(
+    volume_sppoints,
+    cells_sppolygons,
+    volume_points %>% select(-x, -y)
+  )
+
+result <- array(rep(as.integer(NA), max(cumprod(dims))), dim = dims)
+
+cell_ids <- points_in_cells %>% 
+  filter(!is.na(.cell_id)) %>% 
+  pluck(".cell_id") %>% 
+  unique()
+
+
+
+# for(cell_id in cell_ids) {
+#   voxels <- points_in_cells %>%
+#     filter(.cell_id == cell_id)
+#   
+#   result[voxels$vol_x, voxels$vol_y, ] <- cell_id
+# }
+
+cell_matrix <- voxels_in_cells %>% 
+  select(vol_x, vol_y, .cell_id) %>% 
+  reshape2::acast(vol_x ~ vol_y)
+
+result <- array(cell_matrix, dim = dims)
+
+
+# Work this out graphically
+
+p_slo <- heyexr::construct_slo(oct_data[[1]]$volume, 
+                      low_color = "black", 
+                      high_color = "white", 
+                      scale_bar = FALSE, 
+                      scale_length = 200, 
+                      inset_percentage = .10, 
+                      draw_margins = TRUE)
+
+p_overlay <- result[ , , 1] %>% 
+  reshape2::melt() %>% 
+  set_names(c("x", "y", ".cell_id")) %>% 
+  as_tibble() %>% 
+  ggplot(aes(x = x, y = y)) + 
+  geom_raster(aes(fill = as.factor(.cell_id))) +   
+  scale_x_continuous(expand = c(0,0)) + 
+  scale_y_continuous(expand = c(0,0)) +
+  scale_fill_brewer(palette = "Set1")
+
+p_overlay
+
+
+grid_mm <- grid %>% 
+  mutate(x = x / oct_data[[1]]$volume$header$scale_x_slo,
+         y = y / oct_data[[1]]$volume$header$scale_y_slo)
+# TASK: Translate this to the appropriate center point
+
+p_slo + 
+  annotation_overlay(p_overlay + theme_nude, volume = oct_data[[1]]$volume) + 
+  geom_segment(data = oct_data[[1]]$volume$bscan_headers,
+             mapping = aes(group = bscan,
+                           x = start_x_pixels, 
+                           y = start_y_pixels,
+                           xend = end_x_pixels, 
+                           yend = end_y_pixels),
+             color = "green", 
+             alpha = 0.4) +
+  geom_polygon(data = grid_mm,
+               mapping = aes(x = x, y = y, group = .cell_id),
+               fill = NA, color = "blue")
+
+
+```
+
+
+
+# Future tasks
+
+* TASK: ~~Store bscans as a single 3D array--it will make your life much easier!~~ 
+DONE!
+
+* TASK: ~~Store segmentations as a single 3D array.~~ DONE!
+
+* TASK: ~~Re-order either to VOL bscan IDs or the IRA/OCTExplorer b-scan IDs so that
+they match correctly.~~ DONE!
+
+* TASK: ~~Add a function to heyexr to render structural en face image from the
+volume data.~~ DONE!
+
+* TASK: Update all functions dependent on bscan_images
+
+* TASK: Intensity in the SLO should not be z! Change z to intensity.
+
+* TASK: Convert all coordinate systems to either Heidelberg coordinates or 
+OCTExplorer coordinates.
+
+* TASK: Replace data.frames with tibbles.
+
+
