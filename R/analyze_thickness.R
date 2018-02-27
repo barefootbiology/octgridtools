@@ -56,7 +56,7 @@ analyze_thickness <- function(segmentation_file,
 
   reg_centers <-
     grid_regions_segments %>%
-    group_by(sector_id) %>%
+    group_by(.cell_id) %>%
     dplyr::summarize(
       center_x = mean(x),
       center_z = mean(y)
