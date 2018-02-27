@@ -1,0 +1,10 @@
+theme_nude <- theme(panel.background = element_rect(fill = "transparent", color = NA),
+                    panel.grid = element_blank(),
+                    panel.border = element_blank(),
+                    plot.background = element_rect(fill = "transparent", color = NA),
+                    plot.margin = margin(t = 0, r = 0, b = 0, l = 0, unit = "pt"), 
+                    axis.ticks = element_blank(), 
+                    axis.text = element_blank(), 
+                    axis.title = element_blank(), 
+                    axis.ticks.length = unit(0, "mm"),
+                    legend.position = "none")
