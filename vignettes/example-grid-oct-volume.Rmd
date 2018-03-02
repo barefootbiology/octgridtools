@@ -32,17 +32,20 @@ source_dir("~/stonelab/packages/octgridtools/R_to_incorporate/")
 
 
 # Specify the location of an example OCT
-example_vol_file <- "data/controls/segmentation_v3-8-0_2018-02-05/UI_SF_SPT_000501_001_001_001_ORIGINAL/UI_SF_SPT_000501_001_001_001_ORIGINAL_OCT_Iowa.VOL"
+data_root <- "~/stonelab/experiments/oct/abca4_ush2a_testing/data/controls/segmentation_v3-8-0_2018-02-05/UI_SF_SPT_000501_001_001_001_ORIGINAL/"
 
-example_segmentation_file <- "data/controls/segmentation_v3-8-0_2018-02-05/UI_SF_SPT_000501_001_001_001_ORIGINAL/UI_SF_SPT_000501_001_001_001_ORIGINAL_Surfaces_Iowa.xml"
+example_vol_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_OCT_Iowa.VOL")
 
-example_grid_center_file <- "data/controls/segmentation_v3-8-0_2018-02-05/UI_SF_SPT_000501_001_001_001_ORIGINAL/UI_SF_SPT_000501_001_001_001_ORIGINAL_GridCenter_Iowa.xml"
+example_segmentation_file <-paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_Surfaces_Iowa.xml")
+
+example_grid_center_file <-paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_GridCenter_Iowa.xml")
+
 
 example <- read_oct_files(volume = example_vol_file,
                           segmentation = example_segmentation_file,
                           grid_center = example_grid_center_file)
 
-layer_definition_file <- "data/layer_map_3-8-0.xlsx"
+layer_definition_file <- "~/stonelab/experiments/oct/abca4_ush2a_testing/data/layer_map_3-8-0.xlsx"
 
 layer_definition <- readxl::read_excel(layer_definition_file) %>%
   mutate(layer = factor(layer, levels = layer))
@@ -699,97 +702,94 @@ etdrs_grid %>%
   coord_equal()
 ```
 
+# Slicing in detail
+
+Remember the Presto Salad Shooter from the '90s? That's what slicers do: slice
+up an array into pieces that you can then work with.
+
+## What are slicers?
+
+A slicer is a special arrays used to apply some function to subsets of elements
+within another array. In image analysis terminology, slicers are used to 
+**segment** a dataset into discrete sets.
+
+## How can you construct slicers?
+
+* From segmentation surfaces
+
+* From regular grids
+
+* By combining two or more slicers, you can create a new slicers
+
+* By specifying formulas, such as multidimensional transfer functions. When
+rendering CT data using ray casting, 3D transfer functions have been used to
+segment out different tissue types based on distributions of various 
+parameters. We can potentially do the same for OCTs.
+
+Many slicers will conceptually have two components:
+
+* The general [component] will apply to all volumes. For instance, the layers
+of a retinal layer segmentation algorithm will apply to all macular OCTs (even
+if a layer is absent in a particular OCT volume).
+
+* However, the coordinates will be specific to a given volume. For instance,
+if a grid is to be centered on the fovea, then the voxels (elements) specifying
+the slicer must be specified for each OCT image volume.
+
+On the other hand, if the data arrays are registered between scans (for example,
+so that all the volumes share the save fovea coordinate), then the same slicer
+could be applied to all volumes.
+
+## Applying a function to volume using a slicer
+
+I've written two functions to apply slicers to volumes:
+
+* `apply_volume` takes a volume, a slicer, and function and returns a volume.
+
+* `map_volume` takes a volume, a slicer, and function and returns a list.
+
+## Working with multiple volumes
+
+Considersations:
+
+* Are the volumes you are slicing all registered? In other words, can you apply
+the same slicer to all the volumes or will the slicer need to be aligned for
+each volume individually?
+
+* Make sure that your grid regions are larger than the least-dense volume. 
+With grids/slicers, you are trying to aggregate across voxels to overcome 
+differences in the resolution of the captured data.
+
+
+## Combining slicers into new slicers
+
+Slicers can be combined if they have the same dimensions. For character array
+slicers, this will take a the form of pasting the slicer levels together with
+some separation value.
+
+NOTE: At this point, string slicers are not associated with factor "levels".
+Any ordering of slicer values or mapping to some other information must be
+performed by the user.
+
+TASK: Should we allow for the case where one slicer is 2D and one is 3D?
+For simplicity, probably not.
+
+**TASK: Notice that the volume representation and the SLO representation are 
+flipped along the horizontal axis. That is 9 --> 7 and 3 --> 5. Fix this to 
+match the OCTExplorer interpretation.**
+
+Here's the ETDRS grid shown in voxel space:
+
 ```{r }
-# TASK: Write a function to create a slicer for a given volume by supplying a
-#       volume, a grid (flipped for OS if necessary), a center point, and an 
-#       appropriate scaling values.
-#       Consider that most grids are probably specified for SLO/anatomic 
-#       scales, so we might need to flip the grid along the horizontal axis
-#       before applying it to the volume.
-
-# Basic procedure:
-# 1. From the volume, get the 2D enface coordinates (x, y).
-# 2. Translate these coordinates into anatomic space.
-# 3. Intersect these coordinates with the grid cells in anatomic space.
-# 4. Map these intersections back to the original x, y coordinates of the 
-#    volume.
-# 5. Construct a volume with appropriate cell ID's as values in each voxel.
-
-# Volume in voxel space with scaling to anatomic space
-dims = dim(oct_data[[1]]$volume$bscan_images)
-
-
-
-scale_x = oct_data[[1]]$volume$header$scale_x
-scale_y = oct_data[[1]]$volume$header$distance
-
-# Center point in voxel space with scaling to anatomic space
-grid_center = oct_data[[1]]$grid_center
-
-
-volume_points <- expand.grid(vol_x = 1:dims[[1]], 
-                             vol_y = 1:dims[[2]]) %>%
-  as_tibble() %>%
-  mutate(vol_x_centered = vol_x - grid_center$center$x[[1]], 
-         vol_y_centered = vol_y - grid_center$center$z[[1]]) %>%
-  mutate(x = vol_x_centered * scale_x,
-         y = vol_y_centered * scale_y)
-
-# Anatomic space centered on zero
-grid = etdrs_grid
-
-
-
-
-# Get 2D (ascan, bscan) coordinates.
-# Center on 0 using the grid_center
-# Translate to anatomic scale
-# For all the points, intersect with grid_cells.
-# Bind the intersection information.
-# Combine with original space
-
-# Construct an result array the same dimensions as the original volume
-
-grid_transformed <- grid
-
-cells_sppolygons <- cells_to_spatialpolygons(grid_transformed)
-
-  # segmentation_thickness <- compute_layer_thickness(segmentation)
-
-volume_sppoints <- tibble_to_spatialpoints(volume_points)
-
-voxels_in_cells <- octgridtools:::find_sppoints_in_sppolygons(
-    volume_sppoints,
-    cells_sppolygons,
-    volume_points %>% select(-x, -y)
+grid_slicer <- convert_grid_to_slicer(
+  grid = etdrs_grid, 
+  grid_center = example$grid_center, 
+  dims = dim(example$volume$bscan_images), 
+  scale_x = example$volume$header$scale_x,
+  scale_y = example$volume$header$distance
   )
 
-result <- array(rep(as.integer(NA), max(cumprod(dims))), dim = dims)
-
-cell_ids <- points_in_cells %>% 
-  filter(!is.na(.cell_id)) %>% 
-  pluck(".cell_id") %>% 
-  unique()
-
-
-
-# for(cell_id in cell_ids) {
-#   voxels <- points_in_cells %>%
-#     filter(.cell_id == cell_id)
-#   
-#   result[voxels$vol_x, voxels$vol_y, ] <- cell_id
-# }
-
-cell_matrix <- voxels_in_cells %>% 
-  select(vol_x, vol_y, .cell_id) %>% 
-  reshape2::acast(vol_x ~ vol_y)
-
-result <- array(cell_matrix, dim = dims)
-
-
-# Work this out graphically
-
-p_slo <- heyexr::construct_slo(oct_data[[1]]$volume, 
+p_slo <- heyexr::construct_slo(example$volume, 
                       low_color = "black", 
                       high_color = "white", 
                       scale_bar = FALSE, 
@@ -797,27 +797,39 @@ p_slo <- heyexr::construct_slo(oct_data[[1]]$volume,
                       inset_percentage = .10, 
                       draw_margins = TRUE)
 
-p_overlay <- result[ , , 1] %>% 
+p_overlay <- grid_slicer[ , , 1] %>% 
   reshape2::melt() %>% 
   set_names(c("x", "y", ".cell_id")) %>% 
   as_tibble() %>% 
   ggplot(aes(x = x, y = y)) + 
-  geom_raster(aes(fill = as.factor(.cell_id))) +   
+  geom_raster(aes(fill = as.factor(.cell_id)),
+              alpha = 0.7) +   
   scale_x_continuous(expand = c(0,0)) + 
   scale_y_continuous(expand = c(0,0)) +
   scale_fill_brewer(palette = "Set1")
 
 p_overlay
+```
 
+Here's what the ETDRS grid looks like en face in the SLO space:
 
-grid_mm <- grid %>% 
-  mutate(x = x / oct_data[[1]]$volume$header$scale_x_slo,
-         y = y / oct_data[[1]]$volume$header$scale_y_slo)
-# TASK: Translate this to the appropriate center point
+```{r }
+slo_center <- get_slo_center(example$volume, example$grid_center)
+
+grid_mm <- 
+  etdrs_grid %>% 
+  mutate(x = (x / example$volume$header$scale_x_slo) + slo_center[["x"]],
+         y = (y / example$volume$header$scale_y_slo) + slo_center[["y"]])
+
+grid_mm_labels <-
+  grid_mm %>%
+  group_by(.cell_id) %>%
+  dplyr::summarize(x = mean(x),
+            y = mean(y)) %>%
+  ungroup()
 
 p_slo + 
-  annotation_overlay(p_overlay + theme_nude, volume = oct_data[[1]]$volume) + 
-  geom_segment(data = oct_data[[1]]$volume$bscan_headers,
+  geom_segment(data = example$volume$bscan_headers,
              mapping = aes(group = bscan,
                            x = start_x_pixels, 
                            y = start_y_pixels,
@@ -825,13 +837,209 @@ p_slo +
                            yend = end_y_pixels),
              color = "green", 
              alpha = 0.4) +
+  annotation_overlay(p_overlay + theme_nude, volume = example$volume) + 
   geom_polygon(data = grid_mm,
                mapping = aes(x = x, y = y, group = .cell_id),
-               fill = NA, color = "blue")
+               fill = NA, 
+               color = "blue",
+               alpha = 0.5) +
+  geom_text(data = grid_mm_labels,
+             mapping = aes(x = x, y = y, label = .cell_id),
+             size = 4,
+             fontface = "bold")
+```
 
+TASK: Add a plot showing all the voxels within a particular ETDRS grid for a 
+specific layer. You might want to do this in order to inspect just how well
+the segmentations are working for a partiular layer in a particular grid region,
+especially if you want to compute some kind of statistics on that set of voxels,
+(for example, the standard deviation of the intensity). In other words, show a
+crop of each b-scan as a wrapped facet, then show only the voxels in that layer
+regions.
+
+TASK: Write a section describing how you can "colorize" voxels by using HSV 
+values. In other words, we can color the voxels in a layer based on some color
+component and intensity, etc.
+
+TASK: Write a function to predict which voxels in a 12x12 mm grid are actually
+noise based on the data in a 6x6 grid.
+
+Compute the en face images for each segmentation surface:
+
+```{r }
+source_dir("~/stonelab/packages/octgridtools/R_to_incorporate/")
+
+undefined_matrix <- get_undefined_matrix(example$segmentation)
+
+surfaces_enface <- 
+  example$volume$bscan_images %>%
+  spline_correction_array() %>%
+  map_volume_xy( 
+    seg_volume = seg_volume, 
+    (function(x) { apply(X = x, c(1,2), sum, na.rm = TRUE)})
+    ) %>%
+  # Remove the unreliable A-scans
+  map(~.x * undefined_matrix) %>%
+  # Normalize the en face values within each layer
+  map(normalize_matrix) %>%
+  # Pull out the ILM - RPE
+  (function(x) x[2:length(x)])
+
+surfaces_enface[["2"]] %>%
+  image()
+```
+
+These are the en face images for all the surfaces:
+
+```{r }
+surfaces_enface %>%
+  map_dfr(~reshape2::melt(), 
+          .id = "layer") %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_raster(aes(fill = value)) +
+  facet_wrap(~layer, ncol = 4)
+```
+
+Thicker surfaces tend to result in high en face sums. When plotting, it's
+often better to normalize the values within each surface to better captuer the
+dynamic range within a layer.
+
+```{r }
+surfaces_enface %>%
+  map_dfr(~reshape2::melt(), 
+          .id = "layer") %>%
+  group_by() %>%
+  dplyr::mutate(value = scales::rescale(value, to = c(0, 1))) %>%
+  ungroup() %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_raster(aes(fill = value)) +
+  facet_wrap(~layer, ncol = 4)
+```
+
+Plot each segmentation surface in 3D:
+
+```{r }
+library(rgl)
+
+surface_array_list <- 
+  create_seg_array(example$segmentation) %>%
+  split_xyz_by_z() %>%
+  # Omit the artificial top and bottom surfaces
+  (function(x) x[2:12]) 
+
+surface_colors <- RColorBrewer::brewer.pal(11, "Paired")
+
+volume_center <- get_array_center(example$volume$bscan_images)
+
+# Rotate the camera
+rotation_matrix <- rotationMatrix(2 * pi * 125/360, 1, 0, 0) %*%
+         rotationMatrix(2 * pi * 140/360, 0, 0, 1)
+
+# Show the bounding box as a wireframe cube
+volume_boundaries <- cube3d() %>%
+  scale3d(x = dim(example$volume$bscan_images)[[1]] / 2,
+          y = dim(example$volume$bscan_images)[[2]] / 2,
+          z = dim(example$volume$bscan_images)[[3]] / 2) %>%
+  translate3d(x = volume_center[[1]],
+              y = volume_center[[2]],
+              z = volume_center[[3]]) 
+
+# Assemble the pieces of the plot ----------------------------------------------
+setup_plot3d <- function() {
+  rgl.open(useNULL = rgl.useNULL()) 
+  
+  # Set aspect ratio
+  # NOTE: Aspect ratios will need to be adjusted if you use SS-OCT data
+  aspect3d(x = 1, y = aspect_ratio, z = 1)
+  
+  view3d(userMatrix = rotation_matrix)
+  
+  volume_boundaries %>%
+    wire3d()
+}
+```
+
+Once again, we have another coordinate space to consider. In order to position
+the surface map properly, we need to flip the segmentation array--and any other
+values aligned to that array, such as texturemaps--along the `y` axis.
+
+```{r }
+setup_plot3d()
+
+surface_array_list %>%
+  iwalk(~surface3d(x = 1:example$segmentation$info$size_x,
+                 y = 1:example$segmentation$info$size_z,
+                 z = flip_array(.x, 2), 
+                 color = surface_colors[as.numeric(.y)],
+                 add = TRUE))
+rglwidget()
+```
+
+Even though we have discarded undefined A-scans in the data matrix, both 
+`rgl::persp3d` and  `rgl::surface3d` will still interpolate the surfaces at 
+those positions. Thus, we need some way to highlight positions on the surface as 
+undefined. This highlighting can be done by creating a special lookup table for 
+the en face structural color map.
+
+```{r }
+gray_scale <- 
+  map(0:255 / 255, gray) %>% 
+  as_vector() %>%
+  # Add a color for the NA value
+  c("green")
+
+surface_enface_colors <- 
+  surfaces_enface %>%
+  map(~255 * flip_array(.x, 2) + 1) %>%
+  map(~na_replace(.x, 257))  %>%
+  map(~gray_scale[.x])
+
+setup_plot3d()
+
+surface_array_list %>%
+  (function(x) set_names(x, as.character(1:length(x)))) %>%
+  iwalk(~surface3d(x = 1:example$segmentation$info$size_x,
+                 y = 1:example$segmentation$info$size_z,
+                 z = flip_array(.x, 2), 
+                 color = surface_enface_colors[[.y]],
+                 add = TRUE))
+
+rglwidget()
+```
+
+Alternatively, we could set the alpha to 0 for undefined A-scans. However, `rgl`
+becomes horribly slow when alphas are used. The code is below, but we won't
+render it.
+
+TASK: Set alpha to 0 to "remove" the undefined A-scans.
+
+```{r }
+surface_enface_alphas <- 
+  surface_enface_colors %>%
+  map(~if_else(.x == "green", 0, 1))
+
+setup_plot3d()
+
+surface_array_list %>%
+  (function(x) set_names(x, as.character(1:length(x)))) %>%
+  iwalk(~surface3d(x = 1:example$segmentation$info$size_x,
+                 y = 1:example$segmentation$info$size_z,
+                 z = flip_array(.x, 2), 
+                 color = surface_enface_colors[[.y]],
+                 alpha = surface_enface_alphas[[.y]],
+                 add = TRUE))
+
+rglwidget()
 
 ```
 
+It would be nice to cut away the layers so that we can see the en face 
+representation of lower layers. We can start this cut away at the fovea.
+
+```{r }
+
+
+```
 
 
 # Future tasks
@@ -856,4 +1064,6 @@ OCTExplorer coordinates.
 
 * TASK: Replace data.frames with tibbles.
 
-
+* TASK: Create a figure showing the cone/rod/ganglion cell densities computed 
+by Christine Curcio overlaid on B-scans. I think this will let us highlight the
+"central cone bouquet"
