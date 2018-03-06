@@ -22,8 +22,8 @@ convert_grid_to_slicer <- function(grid, grid_center, dims, scale_x, scale_y) {
   volume_points <- expand.grid(vol_x = 1:dims[[1]],
                                vol_y = 1:dims[[2]]) %>%
     as_tibble() %>%
-    mutate(vol_x_centered = vol_x - grid_center$center$x[[1]],
-           vol_y_centered = vol_y - grid_center$center$z[[1]]) %>%
+    mutate(vol_x_centered = vol_x - grid_center$center$x,
+           vol_y_centered = vol_y - grid_center$center$z) %>%
     mutate(x = vol_x_centered * scale_x,
            y = vol_y_centered * scale_y)
 

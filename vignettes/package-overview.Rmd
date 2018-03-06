@@ -66,7 +66,7 @@ grid_hexagons <-
   generate_grid_hexagons(
     nrow = 11,
     ncol = 10,
-    radius = 6/11
+    radius = 6 / 11
   ) %>%
   mutate(type = "hexagons") %>%
   # TASK: Move this into generate_grid_hexagons
@@ -173,6 +173,11 @@ the data within a cell region, and re-dispay the data.
 
 # Important points to consider when using grids to summarize data
 
+* When analyzing images of paired organs, such as eyes, do you need to compare
+comparable regions across the pair? For example, do you need to consider to
+compare the temporal quadrant of the right (OD) eye to the temporal quadrant of 
+the left eye? If so, then you'll need to reflect the grid prior so that the 
+appropriate `.cell_id`s match anatomically. 
 * Is the size of your grid cells smaller than the resolution of your data?
 * Does the orientation of your grid match the orientation of your data? How is
 your image or map oriented?

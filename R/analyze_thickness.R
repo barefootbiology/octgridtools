@@ -22,9 +22,8 @@ analyze_thickness <- function(segmentation_file,
 
 
   # PARSE COORDINATES ----------------------------------------------------------
-  # Add one to use the 1-based coordinate convention in R.
-  center_x_voxel <- grid_center[["center"]][["x"]][[1]] + 1
-  center_z_voxel <- grid_center[["center"]][["z"]][[1]] + 1
+  center_x_voxel <- grid_center[["center"]][["x"]]
+  center_z_voxel <- grid_center[["center"]][["z"]]
 
   center_x <- center_x_voxel * segmentation$info$voxel_size_x
   center_z <- center_z_voxel * segmentation$info$voxel_size_z

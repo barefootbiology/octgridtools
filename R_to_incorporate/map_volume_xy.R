@@ -7,7 +7,7 @@ map_volume_xy <- function(volume, seg_volume, .fun, ...) {
   for(r in regions) {
     # result[[as.character(r)]] <- .fun(volume[seg_volume == r], ...)
 
-    slice_r <- volume * create_slicer(seg_volume = seg_volume, from = r, to = r)
+    slice_r <- volume * create_slicer_subset(seg_volume = seg_volume, values = r)
 
     result[[as.character(r)]] <- .fun(slice_r, ...)
   }

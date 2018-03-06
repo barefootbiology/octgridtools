@@ -2,7 +2,7 @@
 title: "Working with grids and OCT volumes"
 author: "S. Scott Whitmore"
 date: "`r Sys.Date()`"
-output: html_document
+output: rmarkdown::html_document
 editor_options: 
   chunk_output_type: console
 ---
@@ -36,9 +36,9 @@ data_root <- "~/stonelab/experiments/oct/abca4_ush2a_testing/data/controls/segme
 
 example_vol_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_OCT_Iowa.VOL")
 
-example_segmentation_file <-paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_Surfaces_Iowa.xml")
+example_segmentation_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_Surfaces_Iowa.xml")
 
-example_grid_center_file <-paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_GridCenter_Iowa.xml")
+example_grid_center_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_GridCenter_Iowa.xml")
 
 
 example <- read_oct_files(volume = example_vol_file,
@@ -195,11 +195,16 @@ TASK: Standardize the layer segmentation coordinates between Heidelberg and
 IRA/OCTExplorer (x, y, value, surface_id, etc.).
 
 ```{r }
+# segmentation_ira <- example$segmentation$layers %>% 
+#               left_join(get_undefined(example$segmentation)) %>%
+#               inner_join(layer_definition, 
+#                          by = c("layer_y_order" = "surface")) %>%
+#   mutate(is_defined = if_else(is.na(is_defined), TRUE, FALSE))
+
 segmentation_ira <- example$segmentation$layers %>% 
-              left_join(get_undefined(example$segmentation)) %>%
-              inner_join(layer_definition, 
-                         by = c("layer_y_order" = "surface")) %>%
-  mutate(is_defined = if_else(is.na(is_defined), TRUE, FALSE))
+  add_undefined(get_undefined(example$segmentation)) %>%
+  inner_join(layer_definition, 
+             by = c("layer_y_order" = "surface"))
 
 construct_bscan(example$volume, bn = test_bscan_id) +
   geom_line(data = segmentation_ira %>%
@@ -254,9 +259,7 @@ vol_data <- example$volume$bscan_images
  
 enface_total <- vol_data %>% 
   apply(c(1,2), sum, na.rm = TRUE) %>% 
-  reshape2::melt() %>% 
-  as_tibble() %>%
-  set_names(c("x", "y", "intensity")) 
+  melt_array(c("x", "y", "intensity"))
 
 aspect_ratio <- get_enface_aspect(example$volume)
   
@@ -277,9 +280,7 @@ We can create basic surface maps of the segmentation several ways:
 ```{r }
 # The surface map of the ILM
 create_seg_array(example$segmentation)[ , , 2] %>% 
-  reshape2::melt() %>% 
-  as_tibble() %>% 
-  set_names(c("x", "y", "z")) %>% 
+  melt_array(c("x", "y", "z")) %>%
   ggplot(aes(x = x, y = y)) + 
   geom_raster(aes(fill = z))  +
   coord_fixed(ratio = aspect_ratio)
@@ -331,25 +332,30 @@ enface_retinal_thickness %>%
 We can compare the performance of both retinal thickness measures:
 
 ```{r }
-enface_retinal_thickness_difference <- enface_retinal_thickness %>% 
+enface_retinal_thickness_difference <- 
+  enface_retinal_thickness %>% 
   select(x, y, thickness_scaled, algorithm) %>% 
   spread(algorithm, thickness_scaled) %>% 
   mutate(difference = Heidelberg - Iowa) 
 
-p_scatterplot <- enface_retinal_thickness_difference %>%
+p_scatterplot <- 
+  enface_retinal_thickness_difference %>%
   ggplot(aes(x = Heidelberg, y = Iowa)) +
   geom_abline(slope = 1, color = "red") +
   geom_point(size = 0.2, alpha = 0.25) +
   coord_equal()
 
-p_difference_map <- enface_retinal_thickness_difference %>%
+p_difference_map <- 
+  enface_retinal_thickness_difference %>%
   ggplot(aes(x = x, y = y)) +
   geom_raster(aes(fill = difference)) +
   scale_fill_gradient2(name = "thickness difference\nHeidelberg - Iowa\n(µm)",
                        low = "blue", mid = "white", high = "red") +
   coord_fixed(ratio = aspect_ratio)
 
-p_difference_map + p_scatterplot + plot_layout(nrow = 1, widths = c(4, 3))
+p_difference_map + 
+  p_scatterplot + 
+  plot_layout(nrow = 1, widths = c(4, 3))
 ```
 
 # Overlaying en face computed images on the SLO
@@ -360,7 +366,8 @@ thickness maps, deviations, structural enface images, or depth
 maps.
 
 ```{r }
-p_thickness_octexplorer_alpha <- enface_retinal_thickness_octexplorer %>%
+p_thickness_octexplorer_alpha <- 
+  enface_retinal_thickness_octexplorer %>%
   ggplot(aes(x = x, y = y)) + 
   geom_raster(aes(fill = thickness_scaled),
               alpha = 0.5) +
@@ -440,9 +447,7 @@ seg_volume <- expand_surfaces_to_volume(
 
 seg_bscan_layers <- 
   seg_volume[ , 30, ] %>%
-  reshape2::melt() %>%
-  set_names(c("x", "z", "layer")) %>%
-  as_tibble()
+  melt_array(c("x", "z", "layer"))
 
 seg_bscan_layers_centers <-
   seg_bscan_layers %>%
@@ -467,12 +472,10 @@ You can then select layer indices by to create slices.
 ```{r }
 surface_array <- iowa_segmentation_to_array(example$segmentation)
 
-slicer_full_thickness <- create_slicer(seg_volume = seg_volume, 1, 10)
+slicer_full_thickness <- create_slicer_range(seg_volume = seg_volume, 1, 10)
 
 slicer_full_thickness[ , 30, ] %>%
-  reshape2::melt() %>%
-  set_names(c("x", "z", "intensity")) %>%
-  as_tibble() %>%
+  melt_array(c("x", "z", "intensity")) %>%
   ggplot(aes(x = x, y = z)) +
   geom_raster(aes(fill = intensity)) +
   scale_y_reverse()
@@ -486,9 +489,7 @@ And here are the voxels it sliced:
 volume_sliced <- example$volume$bscan_images * slicer_full_thickness
 
 volume_sliced[ , 30, ] %>%
-  reshape2::melt() %>%
-  set_names(c("x", "z", "intensity")) %>%
-  as_tibble() %>%
+  melt_array(c("x", "z", "intensity")) %>%
   mutate(intensity0 = if_else(is.na(intensity), 
                              0,
                              intensity)) %>%
@@ -507,16 +508,18 @@ Once we have sliced voxels, we can now compute statistics for every a-scan to
 compute a new en face image:
 
 ```{r }
-p_enface_full_thickness <- volume_sliced %>%
+enface_full_thickness <- 
+  volume_sliced %>%
   spline_correction_array() %>%
   apply(c(1,2), sum, na.rm = TRUE) %>%
-  reshape2::melt() %>%
-  set_names(c("x", "y", "value")) %>%
-  as_tibble() %>%
-  full_join(get_undefined(example$segmentation)) %>%
-  mutate(is_defined = if_else(is.na(is_defined), TRUE, is_defined)) %>%
-  mutate(value = if_else(is_defined, value, as.numeric(NA))) %>%
-  
+  melt_array(c("x", "y", "value")) %>% 
+  add_undefined(get_undefined(example$segmentation))
+  # full_join(get_undefined(example$segmentation)) %>%
+  # mutate(is_defined = if_else(is.na(is_defined), TRUE, is_defined)) %>%
+  # mutate(value = if_else(is_defined, value, as.numeric(NA)))
+
+p_enface_full_thickness <-   
+  enface_full_thickness %>%
   ggplot(aes(x = x, y = y)) +
   geom_raster(aes(fill = value),
               alpha = 1) +
@@ -524,7 +527,8 @@ p_enface_full_thickness <- volume_sliced %>%
   scale_x_continuous(expand = c(0,0)) + 
   scale_y_continuous(expand = c(0,0))  
 
-p_slo_overlay_enface <- p_slo + 
+p_slo_overlay_enface <- 
+  p_slo + 
   annotation_overlay(plot_overlay = p_enface_full_thickness + theme_nude,
                      volume = example$volume) 
 
@@ -546,9 +550,7 @@ volume_median <- apply_volume(
   )
 
 volume_median[ , 30, ] %>%
-  reshape2::melt() %>%
-  set_names(c("x", "z", "intensity")) %>%
-  as_tibble() %>%
+  melt_array(c("x", "z", "intensity")) %>%
   ggplot(aes(x = x, y = z)) +
   geom_raster(aes(fill = intensity)) +
   scale_y_reverse() +
@@ -571,9 +573,7 @@ volume_sd <- apply_volume(
   )
 
 volume_sd[ , 30, ] %>%
-  reshape2::melt() %>%
-  set_names(c("x", "z", "intensity")) %>%
-  as_tibble() %>%
+  melt_array(c("x", "z", "intensity")) %>% 
   ggplot(aes(x = x, y = z)) +
   geom_raster(aes(fill = intensity)) +
   scale_y_reverse() +
@@ -591,7 +591,6 @@ objects (instead of returning another volume). For example, we can show the
 distribution of intensities in each layer:
 
 ```{r }
-
 layer_intensity_values <- map_volume(
   volume = spline_correction_array(example$volume$bscan_images),
   seg_volume = seg_volume,
@@ -639,12 +638,13 @@ layer representation by subtracting out the base of the RPE:
 
 ```{r }
 layers_flattened <- example$segmentation$layers %>% 
-  full_join(get_undefined(example$segmentation)) %>%
-  mutate(is_defined = if_else(is.na(is_defined), TRUE, is_defined)) %>%
-  mutate(value = if_else(is_defined, value, as.numeric(NA))) %>%
+  # full_join(get_undefined(example$segmentation)) %>%
+  # mutate(is_defined = if_else(is.na(is_defined), TRUE, is_defined)) %>%
+  # mutate(value = if_else(is_defined, value, as.numeric(NA))) %>%
+  add_undefined(get_undefined(example$segmentation)) %>%
   filter(bscan_id == 30) %>%
   group_by(bscan_id, ascan_id) %>% 
-  mutate(value_flattened = max(value) - value) %>%
+  mutate(value_flattened = max(value_defined) - value_defined) %>%
   ungroup() 
 
 layers_flattened %>% 
@@ -798,9 +798,7 @@ p_slo <- heyexr::construct_slo(example$volume,
                       draw_margins = TRUE)
 
 p_overlay <- grid_slicer[ , , 1] %>% 
-  reshape2::melt() %>% 
-  set_names(c("x", "y", ".cell_id")) %>% 
-  as_tibble() %>% 
+  melt_array(c("x", "y", ".cell_id")) %>% 
   ggplot(aes(x = x, y = y)) + 
   geom_raster(aes(fill = as.factor(.cell_id)),
               alpha = 0.7) +   
@@ -816,10 +814,18 @@ Here's what the ETDRS grid looks like en face in the SLO space:
 ```{r }
 slo_center <- get_slo_center(example$volume, example$grid_center)
 
+# Use an affine matrix to flip the ETDRS grid to work in the SLO space
+affine_matrix <- matrix(c(1, 0, 0,
+                         0, -1, 0,
+                         0, 0, 1), 
+                        ncol = 3, 
+                        byrow = TRUE)
+
 grid_mm <- 
   etdrs_grid %>% 
+  affine_transform_coord(affine = affine_matrix) %>%
   mutate(x = (x / example$volume$header$scale_x_slo) + slo_center[["x"]],
-         y = (y / example$volume$header$scale_y_slo) + slo_center[["y"]])
+         y = (y / example$volume$header$scale_y_slo) + slo_center[["y"]]) 
 
 grid_mm_labels <-
   grid_mm %>%
@@ -861,16 +867,11 @@ TASK: Write a section describing how you can "colorize" voxels by using HSV
 values. In other words, we can color the voxels in a layer based on some color
 component and intensity, etc.
 
-TASK: Write a function to predict which voxels in a 12x12 mm grid are actually
-noise based on the data in a 6x6 grid.
+
 
 Compute the en face images for each segmentation surface:
 
 ```{r }
-source_dir("~/stonelab/packages/octgridtools/R_to_incorporate/")
-
-undefined_matrix <- get_undefined_matrix(example$segmentation)
-
 surfaces_enface <- 
   example$volume$bscan_images %>%
   spline_correction_array() %>%
@@ -879,7 +880,7 @@ surfaces_enface <-
     (function(x) { apply(X = x, c(1,2), sum, na.rm = TRUE)})
     ) %>%
   # Remove the unreliable A-scans
-  map(~.x * undefined_matrix) %>%
+  map(~.x * get_undefined_matrix(example$segmentation)) %>%
   # Normalize the en face values within each layer
   map(normalize_matrix) %>%
   # Pull out the ILM - RPE
@@ -892,31 +893,27 @@ surfaces_enface[["2"]] %>%
 These are the en face images for all the surfaces:
 
 ```{r }
-surfaces_enface %>%
-  map_dfr(~reshape2::melt(), 
+surface_enface_tbl <- 
+  surfaces_enface %>%
+  map_dfr(~melt_array(.x, c("x", "y", "value")), 
           .id = "layer") %>%
+  as_tibble() %>%
+  mutate(layer = as.numeric(layer))
+
+surface_enface_tbl %>%
   ggplot(aes(x = x, y = y)) +
   geom_raster(aes(fill = value)) +
   facet_wrap(~layer, ncol = 4)
 ```
 
-Thicker surfaces tend to result in high en face sums. When plotting, it's
-often better to normalize the values within each surface to better captuer the
-dynamic range within a layer.
+# Projecting data in three dimensions
 
-```{r }
-surfaces_enface %>%
-  map_dfr(~reshape2::melt(), 
-          .id = "layer") %>%
-  group_by() %>%
-  dplyr::mutate(value = scales::rescale(value, to = c(0, 1))) %>%
-  ungroup() %>%
-  ggplot(aes(x = x, y = y)) +
-  geom_raster(aes(fill = value)) +
-  facet_wrap(~layer, ncol = 4)
-```
+We can plot each segmentation surface in 3D. To do this correctly, we'll have
+to create a few object to flesh out the visualization.
 
-Plot each segmentation surface in 3D:
+Once again, we have another coordinate space to consider. In order to position
+the surface map properly, we need to flip the segmentation array--and any other
+values aligned to that array, such as texturemaps--along the `y` axis.
 
 ```{r }
 library(rgl)
@@ -927,7 +924,8 @@ surface_array_list <-
   # Omit the artificial top and bottom surfaces
   (function(x) x[2:12]) 
 
-surface_colors <- RColorBrewer::brewer.pal(11, "Paired")
+surface_colors <- RColorBrewer::brewer.pal(length(surface_array_list), 
+                                           "Paired")
 
 volume_center <- get_array_center(example$volume$bscan_images)
 
@@ -944,6 +942,9 @@ volume_boundaries <- cube3d() %>%
               y = volume_center[[2]],
               z = volume_center[[3]]) 
 
+size_x <- example$segmentation$info$size_x
+size_z <- example$segmentation$info$size_z
+
 # Assemble the pieces of the plot ----------------------------------------------
 setup_plot3d <- function() {
   rgl.open(useNULL = rgl.useNULL()) 
@@ -959,16 +960,14 @@ setup_plot3d <- function() {
 }
 ```
 
-Once again, we have another coordinate space to consider. In order to position
-the surface map properly, we need to flip the segmentation array--and any other
-values aligned to that array, such as texturemaps--along the `y` axis.
+
 
 ```{r }
 setup_plot3d()
 
 surface_array_list %>%
-  iwalk(~surface3d(x = 1:example$segmentation$info$size_x,
-                 y = 1:example$segmentation$info$size_z,
+  iwalk(~surface3d(x = 1:size_x,
+                 y = 1:size_z,
                  z = flip_array(.x, 2), 
                  color = surface_colors[as.numeric(.y)],
                  add = TRUE))
@@ -998,8 +997,8 @@ setup_plot3d()
 
 surface_array_list %>%
   (function(x) set_names(x, as.character(1:length(x)))) %>%
-  iwalk(~surface3d(x = 1:example$segmentation$info$size_x,
-                 y = 1:example$segmentation$info$size_z,
+  iwalk(~surface3d(x = 1:size_x,
+                 y = 1:size_z,
                  z = flip_array(.x, 2), 
                  color = surface_enface_colors[[.y]],
                  add = TRUE))
@@ -1011,9 +1010,7 @@ Alternatively, we could set the alpha to 0 for undefined A-scans. However, `rgl`
 becomes horribly slow when alphas are used. The code is below, but we won't
 render it.
 
-TASK: Set alpha to 0 to "remove" the undefined A-scans.
-
-```{r }
+```{r eval=FALSE}
 surface_enface_alphas <- 
   surface_enface_colors %>%
   map(~if_else(.x == "green", 0, 1))
@@ -1022,25 +1019,100 @@ setup_plot3d()
 
 surface_array_list %>%
   (function(x) set_names(x, as.character(1:length(x)))) %>%
-  iwalk(~surface3d(x = 1:example$segmentation$info$size_x,
-                 y = 1:example$segmentation$info$size_z,
+  iwalk(~surface3d(x = 1:size_x,
+                 y = 1:size_z,
                  z = flip_array(.x, 2), 
                  color = surface_enface_colors[[.y]],
                  alpha = surface_enface_alphas[[.y]],
                  add = TRUE))
 
 rglwidget()
+```
 
+Can we pass `NA` as the color instead?
+
+```{r }
+surface_enface_colors_NA <- 
+  surface_enface_colors %>%
+  map(~if_else(.x != "green", .x, as.character(NA)))
+
+setup_plot3d()
+
+surface_array_list %>%
+  (function(x) set_names(x, as.character(1:length(x)))) %>%
+  iwalk(~surface3d(x = 1:size_x,
+                 y = 1:size_z,
+                 z = flip_array(.x, 2), 
+                 color = surface_enface_colors_NA[[.y]],
+                 add = TRUE))
+
+rglwidget()
 ```
 
 It would be nice to cut away the layers so that we can see the en face 
 representation of lower layers. We can start this cut away at the fovea.
 
 ```{r }
+leading_edge <- seq(from = example$grid_center$center$z, 
+                    to = 1, 
+                    length.out = length(surface_array_list)) %>% 
+  round() %>%
+  set_names(as.character(1:length(surface_array_list)))
 
+surface_enface_colors_trimmed <- 
+  surfaces_enface %>%
+  imap(~255 * flip_array(.x, 2)[, leading_edge[[.y]]:size_z ] + 1) %>%
+  map(~na_replace(.x, 257))  %>%
+  map(~gray_scale[.x])
 
+setup_plot3d()
+
+surface_array_list %>%
+  (function(x) set_names(x, as.character(1:length(x)))) %>%
+  iwalk(~surface3d(x = 1:size_x,
+                 y = leading_edge[[.y]]:size_z,
+                 z = flip_array(.x, 2)[, leading_edge[[.y]]:size_z ], 
+                 color = surface_enface_colors_trimmed[[.y]],
+                 add = TRUE))
+
+rglwidget()
 ```
 
+The problem with this plot is that it's difficult to distinguish the layers,
+even after trimming them. What we can do is combine unique colors for the layers
+as well as the structural information. 
+
+But right now I'll just show single colors for each layer:
+
+```{r }
+setup_plot3d()
+
+surface_array_list %>%
+  (function(x) set_names(x, as.character(1:length(x)))) %>%
+  iwalk(~surface3d(x = 1:size_x,
+                 y = leading_edge[[.y]]:size_z,
+                 z = flip_array(.x, 2)[, leading_edge[[.y]]:size_z ], 
+                 color = surface_colors[[as.numeric(.y)]],
+                 add = TRUE))
+
+rglwidget()
+```
+
+Alternatively, we can just cut off all the values at the fovea:
+
+```{r }
+setup_plot3d()
+
+surface_array_list %>%
+  (function(x) set_names(x, as.character(1:length(x)))) %>%
+  iwalk(~surface3d(x = 1:size_x,
+                 y = example$grid_center$center$z:size_z,
+                 z = flip_array(.x, 2)[ , example$grid_center$center$z:size_z ], 
+                 color = surface_colors[[as.numeric(.y)]],
+                 add = TRUE))
+
+rglwidget()
+```
 
 # Future tasks
 
@@ -1067,3 +1139,8 @@ OCTExplorer coordinates.
 * TASK: Create a figure showing the cone/rod/ganglion cell densities computed 
 by Christine Curcio overlaid on B-scans. I think this will let us highlight the
 "central cone bouquet"
+
+TASK: Write a function to predict which voxels in a 12x12 mm grid are actually
+noise based on the data in a 6x6 grid.
+
+

@@ -26,8 +26,8 @@ calculate_grid_thickness <- function(segmentation,
 
   # PARSE COORDINATES ----------------------------------------------------------
   # Add one to use the 1-based coordinate convention in R.
-  center_x_voxel <- grid_center[["center"]][["x"]][[1]] + 1
-  center_z_voxel <- grid_center[["center"]][["z"]][[1]] + 1
+  center_x_voxel <- grid_center[["center"]][["x"]]
+  center_z_voxel <- grid_center[["center"]][["z"]]
 
   center_x <- center_x_voxel * segmentation$info$voxel_size_x
   center_z <- center_z_voxel * segmentation$info$voxel_size_z
@@ -44,7 +44,7 @@ calculate_grid_thickness <- function(segmentation,
   affine_matrix <- matrix(
     c(
       flip_y, 0, center_x,
-      0, -1, center_z,
+      0, 1, center_z,
       0, 0, 1
     ),
     byrow = TRUE, ncol = 3
