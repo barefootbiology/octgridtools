@@ -89,6 +89,61 @@ layer_definition <- readxl::read_excel(layer_definition_file) %>%
 8. Exporting data
     a. For use in Fiji (Fiji Is Just ImageJ)
     b. To view 3D objects using WebGL
+9. Constructing multi-panel displays for 
+10. Advanced: Registering en face images from SS-OCT with color fundus images.
+
+# Tasks
+
+* TASK: Write a `get_cross_section` function. [TASK: What is the technical name
+for this slice?]
+
+* TASK: Standardize the layer segmentation coordinates between Heidelberg and
+IRA/OCTExplorer (x, y, value, surface_id, etc.).
+
+* TASK: Update all functions dependent on bscan_images
+
+* TASK: Intensity in the SLO should not be z! Change z to intensity.
+
+* TASK: Convert all coordinate systems to either Heidelberg coordinates or 
+OCTExplorer coordinates.
+
+* TASK: Replace data.frames with tibbles.
+
+* TASK: Create a figure showing the cone/rod/ganglion cell densities computed 
+by Christine Curcio overlaid on B-scans. I think this will let us highlight the
+"central cone bouquet"
+
+* TASK: Write a function to predict which voxels in a 12x12 mm grid are actually
+noise based on the data in a 6x6 grid.
+
+* TASK: Add a plot showing all the voxels within a particular ETDRS grid for a 
+specific layer. You might want to do this in order to inspect just how well
+the segmentations are working for a partiular layer in a particular grid region,
+especially if you want to compute some kind of statistics on that set of voxels,
+(for example, the standard deviation of the intensity). In other words, show a
+crop of each b-scan as a wrapped facet, then show only the voxels in that layer
+regions.
+
+* TASK: Write a section describing how you can "colorize" voxels by using HSV 
+values. In other words, we can color the voxels in a layer based on some color
+component and intensity, etc. [Alternatively, show how you can combine multiple
+raster images as layers to construct an new en face image, bypassing ggplot2's
+ban against mapping multiple arguments to `fill`.]
+
+* TASK: Re-work the enface related functions to be something like 
+`apply_volume_enface`. (Perhaps we should rename the `apply_volume` function
+to be `apply_volume_volume`, indicating that you are returning a volume.) OR 
+possibly use `apply_volume_xyz`, `apply_volume_xy`, etc.
+
+* TASK: Write functions to work summary statistics in 3D grids.
+
+* TASK: Expand sections to illustrate how the concepts presented here can be 
+generalized to groups of samples. For example, you can compute statistics across
+multiple samples in a control group, then show how a given sample compares to 
+the controls. You can create heatmaps as well.
+
+* TASK: Should we allow for the case where one slicer is 2D and one is 3D?
+For simplicity, probably not.
 
 
 # Introduction
@@ -191,16 +246,7 @@ Iowa Reference Algorithms, bundled with OCTExplorer, identifies 11 or 12
 surfaces (10 or 11 layers) depending on the version you are using. Currently,
 the heyexr package is designed around OCTExplorer v 3.8.0 output.
 
-TASK: Standardize the layer segmentation coordinates between Heidelberg and
-IRA/OCTExplorer (x, y, value, surface_id, etc.).
-
 ```{r }
-# segmentation_ira <- example$segmentation$layers %>% 
-#               left_join(get_undefined(example$segmentation)) %>%
-#               inner_join(layer_definition, 
-#                          by = c("layer_y_order" = "surface")) %>%
-#   mutate(is_defined = if_else(is.na(is_defined), TRUE, FALSE))
-
 segmentation_ira <- example$segmentation$layers %>% 
   add_undefined(get_undefined(example$segmentation)) %>%
   inner_join(layer_definition, 
@@ -245,10 +291,6 @@ construct_bscan(example$volume, bn = test_bscan_id) +
 Alternatively, we can construct cross-sections through b-scans, cutting along
 the y-axis of the volume.
 
-TASK: Write a `get_cross_section` function. [TASK: What is the technical name
-for this slice?]
-
-
 # En face computed images
 
 We can also compute en face images. For example, here's an en face image 
@@ -275,10 +317,10 @@ inferior to superior.
 
 # Surface maps
 
-We can create basic surface maps of the segmentation several ways:
+We can create basic surface maps of the segmentation several ways. For example,
+here is the surface map of the ILM.
 
 ```{r }
-# The surface map of the ILM
 create_seg_array(example$segmentation)[ , , 2] %>% 
   melt_array(c("x", "y", "z")) %>%
   ggplot(aes(x = x, y = y)) + 
@@ -317,7 +359,6 @@ enface_retinal_thickness %>%
                        colours = rainbow(n = 10)) +
   facet_grid(~ algorithm) +
   coord_fixed(ratio = aspect_ratio)
-
 
 # Notice that missing (NA) values are shown in gray. 
 # 
@@ -432,14 +473,6 @@ the top of the scan and the first [ILM] layer) and goes 1 beyond the number of
 surfaces (RPE to base of scan).
 
 ```{r }
-# 2018-02-19  Monday
-# 
-# TASK: Make a function that can pull out the voxels between surfaces, as needed
-#       for computing structural en face images.
-# NOTE: The function needs to handle any segmentation array.
-
-# source("R/create_seg_array.R")
-
 seg_volume <- expand_surfaces_to_volume(
     surface_array = iowa_segmentation_to_array(example$segmentation),
     vol_dim = dim(example$volume$bscan_images)
@@ -514,9 +547,6 @@ enface_full_thickness <-
   apply(c(1,2), sum, na.rm = TRUE) %>%
   melt_array(c("x", "y", "value")) %>% 
   add_undefined(get_undefined(example$segmentation))
-  # full_join(get_undefined(example$segmentation)) %>%
-  # mutate(is_defined = if_else(is.na(is_defined), TRUE, is_defined)) %>%
-  # mutate(value = if_else(is_defined, value, as.numeric(NA)))
 
 p_enface_full_thickness <-   
   enface_full_thickness %>%
@@ -602,33 +632,12 @@ layer_intensity_values <- map_volume(
   mutate(layer_id = as.factor(as.numeric(layer_id))) %>%
   filter(layer_id %in% as.character(1:10)) 
 
-# layer_intensity_values %>%
-#   ggplot(aes(x = layer_id, y = intensity)) +
-#   geom_boxplot(aes(fill = layer_id)) +
-#   scale_fill_brewer(palette = "Paired") +
-#   coord_flip() 
-
 layer_intensity_values %>%
   ggplot(aes(x = intensity)) +
   geom_density(aes(fill = layer_id)) +
   scale_fill_brewer(palette = "Paired") +
   facet_grid(layer_id ~ .)
 ```
-
-TASK: Re-work the enface related functions to be something like 
-`apply_volume_enface`. (Perhaps we should rename the `apply_volume` function
-to be `apply_volume_volume`, indicating that you are returning a volume.) OR 
-possibly use `apply_volume_xyz`, `apply_volume_xy`, etc.
-
-TASK: Write a function to merge the `undefined` values into the layer tibble.
-Then replace the redundant code throughout this document.
-
-TASK: Write functions to work summary statistics in 3D grids.
-
-TASK: Expand sections to illustrate how the concepts presented here can be 
-generalized to groups of samples. For example, you can compute statistics across
-multiple samples in a control group, then show how a given sample compares to 
-the controls. You can create heatmaps as well.
 
 # Flattening segmentation: Surfaces
 
@@ -638,9 +647,6 @@ layer representation by subtracting out the base of the RPE:
 
 ```{r }
 layers_flattened <- example$segmentation$layers %>% 
-  # full_join(get_undefined(example$segmentation)) %>%
-  # mutate(is_defined = if_else(is.na(is_defined), TRUE, is_defined)) %>%
-  # mutate(value = if_else(is_defined, value, as.numeric(NA))) %>%
   add_undefined(get_undefined(example$segmentation)) %>%
   filter(bscan_id == 30) %>%
   group_by(bscan_id, ascan_id) %>% 
@@ -771,13 +777,6 @@ NOTE: At this point, string slicers are not associated with factor "levels".
 Any ordering of slicer values or mapping to some other information must be
 performed by the user.
 
-TASK: Should we allow for the case where one slicer is 2D and one is 3D?
-For simplicity, probably not.
-
-**TASK: Notice that the volume representation and the SLO representation are 
-flipped along the horizontal axis. That is 9 --> 7 and 3 --> 5. Fix this to 
-match the OCTExplorer interpretation.**
-
 Here's the ETDRS grid shown in voxel space:
 
 ```{r }
@@ -854,20 +853,6 @@ p_slo +
              size = 4,
              fontface = "bold")
 ```
-
-TASK: Add a plot showing all the voxels within a particular ETDRS grid for a 
-specific layer. You might want to do this in order to inspect just how well
-the segmentations are working for a partiular layer in a particular grid region,
-especially if you want to compute some kind of statistics on that set of voxels,
-(for example, the standard deviation of the intensity). In other words, show a
-crop of each b-scan as a wrapped facet, then show only the voxels in that layer
-regions.
-
-TASK: Write a section describing how you can "colorize" voxels by using HSV 
-values. In other words, we can color the voxels in a layer based on some color
-component and intensity, etc.
-
-
 
 Compute the en face images for each segmentation surface:
 
@@ -1113,34 +1098,5 @@ surface_array_list %>%
 
 rglwidget()
 ```
-
-# Future tasks
-
-* TASK: ~~Store bscans as a single 3D array--it will make your life much easier!~~ 
-DONE!
-
-* TASK: ~~Store segmentations as a single 3D array.~~ DONE!
-
-* TASK: ~~Re-order either to VOL bscan IDs or the IRA/OCTExplorer b-scan IDs so that
-they match correctly.~~ DONE!
-
-* TASK: ~~Add a function to heyexr to render structural en face image from the
-volume data.~~ DONE!
-
-* TASK: Update all functions dependent on bscan_images
-
-* TASK: Intensity in the SLO should not be z! Change z to intensity.
-
-* TASK: Convert all coordinate systems to either Heidelberg coordinates or 
-OCTExplorer coordinates.
-
-* TASK: Replace data.frames with tibbles.
-
-* TASK: Create a figure showing the cone/rod/ganglion cell densities computed 
-by Christine Curcio overlaid on B-scans. I think this will let us highlight the
-"central cone bouquet"
-
-TASK: Write a function to predict which voxels in a 12x12 mm grid are actually
-noise based on the data in a 6x6 grid.
 
 
