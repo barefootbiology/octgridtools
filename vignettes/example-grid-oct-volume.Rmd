@@ -249,8 +249,7 @@ the heyexr package is designed around OCTExplorer v 3.8.0 output.
 ```{r }
 segmentation_ira <- example$segmentation$layers %>% 
   add_undefined(get_undefined(example$segmentation)) %>%
-  inner_join(layer_definition, 
-             by = c("layer_y_order" = "surface"))
+  inner_join(invisible(layer_info))
 
 construct_bscan(example$volume, bn = test_bscan_id) +
   geom_line(data = segmentation_ira %>%
@@ -656,8 +655,8 @@ layers_flattened <- example$segmentation$layers %>%
 layers_flattened %>% 
   filter(bscan_id == 30) %>% 
   ggplot(aes(x = ascan_id, y = value_flattened)) + 
-  geom_line(aes(group = layer_y_order, 
-                color = as.factor(layer_y_order))) +
+  geom_line(aes(group = surface_id, 
+                color = as.factor(surface_id))) +
   scale_color_brewer(palette = "Paired")
 ```
 
@@ -676,12 +675,12 @@ they won't overplot each other:
 layers_flattened %>% 
   filter(bscan_id == 30) %>% 
   ggplot(aes(x = ascan_id, y = value_flattened)) + 
-  geom_line(aes(group = layer_y_order, 
-                color = as.factor(layer_y_order))) +  
-  geom_ribbon(aes(group = layer_y_order, 
+  geom_line(aes(group = surface_id, 
+                color = as.factor(surface_id))) +  
+  geom_ribbon(aes(group = surface_id, 
                   ymax = value_flattened,
                   ymin = 0,
-                fill = as.factor(layer_y_order))) +
+                fill = as.factor(surface_id))) +
   scale_fill_brewer(palette = "Paired") +
   scale_color_brewer(palette = "Paired")
 ```

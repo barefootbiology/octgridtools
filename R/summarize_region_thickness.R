@@ -12,7 +12,7 @@ summarize_cell_thickness <- function(pts_cell, cell_centers) {
   pts_cell %>%
     select(-x, -y) %>%
     filter(!is.na(.cell_id)) %>%
-    group_by(layer_y_order, .cell_id) %>%
+    group_by(surface_id, .cell_id) %>%
     dplyr::summarize(
       thickness_um_mean = mean(thickness_um),
       thickness_um_sd = sd(thickness_um)
