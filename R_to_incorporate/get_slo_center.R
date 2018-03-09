@@ -4,7 +4,7 @@ get_slo_center <- function(volume, grid_center) {
 
   # Find the coordinates on the b-scan
   center_bscan <- volume$bscan_headers %>%
-    filter(bscan == grid_center$center$z[[1]])
+    filter(bscan_id == grid_center$center$z[[1]])
 
   # A-scan
   x <- scales::rescale(x = grid_center$center$x[[1]],

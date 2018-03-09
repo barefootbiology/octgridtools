@@ -199,7 +199,7 @@ on the SLO image.
 ```{r }
 p_slo +
   geom_segment(data = example$volume$bscan_headers,
-               mapping = aes(group = bscan,
+               mapping = aes(group = bscan_id,
                              x = start_x_pixels, 
                              y = start_y_pixels,
                              xend = end_x_pixels, 
@@ -208,7 +208,7 @@ p_slo +
                alpha = 0.4) +
   geom_text(data = example$volume$bscan_headers %>%
                filter(bscan %in% seq(from = 1, to = 61, by = 3)),
-            mapping = aes(label = bscan,
+            mapping = aes(label = bscan_id,
                           x = start_x_pixels,
                           y = start_y_pixels),
             color = "white", 
@@ -225,8 +225,8 @@ Here's what b-scan `r test_bscan_id` looks like with the automatic segmentation
 included in the VOL file overlaid:
 
 ```{r }
-construct_bscan(example$volume, bn = test_bscan_id) +
-  geom_line(data = get_segmentation(example$volume) %>% filter(b_scan == 30),
+construct_bscan(example$volume, bscan_id = test_bscan_id) +
+  geom_line(data = get_segmentation(example$volume) %>% filter(bscan_id == 30),
             mapping = aes(x = x, 
                           y = z, 
                           group = surface, 
@@ -251,7 +251,7 @@ segmentation_ira <- example$segmentation$layers %>%
   add_undefined(get_undefined(example$segmentation)) %>%
   inner_join(invisible(layer_info))
 
-construct_bscan(example$volume, bn = test_bscan_id) +
+construct_bscan(example$volume, bscan_id = test_bscan_id) +
   geom_line(data = segmentation_ira %>%
               filter(bscan_id == 30),
             mapping = aes(x = ascan_id, 
@@ -272,7 +272,7 @@ is uncertain in those areas. We can filter the segmentation to remove the
 "undefined" surfaces:
 
 ```{r }
-construct_bscan(example$volume, bn = test_bscan_id) +
+construct_bscan(example$volume, bscan_id = test_bscan_id) +
   geom_line(data = segmentation_ira %>%
               filter(bscan_id == 30) %>%
               filter(is_defined),
@@ -447,7 +447,7 @@ Note that the b-scan lines indicate the middle of the voxels:
 ```{r }
 p_slo_overlay_bscans <- p_slo_overlay + 
     geom_segment(data = example$volume$bscan_headers,
-               mapping = aes(group = bscan,
+               mapping = aes(group = bscan_id,
                              x = start_x_pixels, 
                              y = start_y_pixels,
                              xend = end_x_pixels, 
@@ -834,7 +834,7 @@ grid_mm_labels <-
 
 p_slo + 
   geom_segment(data = example$volume$bscan_headers,
-             mapping = aes(group = bscan,
+             mapping = aes(group = bscan_id,
                            x = start_x_pixels, 
                            y = start_y_pixels,
                            xend = end_x_pixels, 
