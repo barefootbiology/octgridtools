@@ -1,4 +1,4 @@
-# NOTE: This function assums there is a column named "value", but this column
+# NOTE: This function assumes there is a column named "value", but this column
 #       name is likely to change in future interations of the software.
 add_undefined <- function(data, undefined) {
   data %>%
