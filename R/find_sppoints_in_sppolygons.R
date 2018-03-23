@@ -5,11 +5,16 @@
 #' @importFrom sp over
 #' @importFrom dplyr bind_cols as_tibble
 #' @importFrom magrittr %>%
-find_sppoints_in_sppolygons <- function(pts, plygns, pts_attributes) {
-  sp::over(
+find_sppoints_in_sppolygons <- function(pts, plygns, pts_attributes = NULL) {
+
+  result <- sp::over(
     pts,
     plygns
-  ) %>%
-    bind_cols(pts_attributes) %>%
-    as_tibble()
+  )
+
+  if(!is.null(pts_attributes)) {
+    result <- bind_cols(result, pts_attributes)
+  }
+
+  as_tibble(result)
 }
