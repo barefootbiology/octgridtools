@@ -5,7 +5,7 @@
 #' @export
 #' @importFrom dplyr group_by arrange mutate filter ungroup select
 #' @importFrom magrittr %>%
-compute_layer_thickness <- function(seg, remove_undefined) {
+compute_layer_thickness <- function(seg) {
   seg$layers %>%
     # ------------
     # Remove ascans which were marked by the Iowa Reference Algorithms as

@@ -2,6 +2,7 @@
 #'
 #' Determine which points appear in which regions.
 #'
+#' @export
 #' @importFrom sp over
 #' @importFrom dplyr bind_cols as_tibble
 #' @importFrom magrittr %>%
