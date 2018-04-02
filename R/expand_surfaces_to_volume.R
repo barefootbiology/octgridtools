@@ -1,3 +1,12 @@
+#' Expand segmentation surfaces into a segmentation volume
+#'
+#' Expands segmentation surfaces into a segmentation volume. Surfaces IDs are
+#' imputed from the inner inner surface of a layer. NOTE: This assumes surfaces
+#' IDs start at 1. Creates artificial surfaces at the top and bottoms of the
+#' volume.
+#'
+#' @export
+#' @importFrom magrittr %>%
 expand_surfaces_to_volume <- function(surface_array, vol_dim) {
   n_voxels <-
     vol_dim %>%

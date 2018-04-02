@@ -1,3 +1,9 @@
+#' Compute the center coordinate of an array
+#'
+#' Computes the center coordiante of an array. Useful for setting the origin
+#' in `rgl` 3D plots.
+#'
+#' @export
 get_array_center <- function(a) {
   dim_a <- dim(a)
 

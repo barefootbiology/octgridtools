@@ -1,4 +1,11 @@
-# This function works with IRA/OCTExplorer segmenation coordinate definition.
+#' Convert segmentation object into a segmentation array
+#'
+#' Converts a segmentation object from `heyexr` into a segmentation array.
+#' This function works with IRA/OCTExplorer segmenation coordinate definition.
+#'
+#' @export
+#' @importFrom dplyr arrange select
+#' @importFrom purrr as_vector
 create_seg_array <- function(segmentation) {
   values_ordered <- segmentation$layers %>%
     arrange(surface_id, bscan_id, ascan_id) %>%
