@@ -5,7 +5,7 @@
 #' are allowed to intersect (i.e., after manual correction).
 #'
 #' @export
-#' @importForm magrittr %>%
+#' @importFrom magrittr %>%
 #' @importFrom reshape2 melt
 #' @importFrom tibble as_tibble
 #' @importFrom rlang set_names

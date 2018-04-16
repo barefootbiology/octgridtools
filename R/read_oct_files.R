@@ -35,7 +35,7 @@ read_oct_files <- function(volume = NA,
 
     result$disk_center <- read_center_xml(center_file = disk_center)
 
-    result$disk_center$scan_characteristics$laterality[[1]] <- laterality
+    # result$disk_center$scan_characteristics$laterality[[1]] <- laterality
   }
 
   message(length(result), " file(s) successfully read.")

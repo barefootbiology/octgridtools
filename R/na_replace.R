@@ -1,14 +1,10 @@
-#' Replace elements based on a function
+#' Replace NA values in a vector
 #'
-#' Replaces elements based on a function which returns a logical condition.
+#' Replaces NA values in a vector.
 #'
 #' @export
-#' @dplyr if_else
-find_replace <- function(.x, replacement, find_fun, ...) {
-  if_else(find_fun(.x, ...), replacement, x)
-}
-
+#' @importFrom dplyr if_else
 na_replace <- function(x, replacement) {
-  find_replace(.x = x, replacement = replacement, find_fun = is.na)
-  # if_else(is.na(x), replacement, x)
+  #find_replace(.x = x, replacement = replacement, find_fun = is.na)
+  if_else(is.na(x), replacement, x)
 }

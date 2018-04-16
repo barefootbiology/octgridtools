@@ -6,7 +6,7 @@
 #'
 #' @export
 #' @importFrom dplyr if_else
-#' @importForm heyexr spline_correction
+#' @importFrom heyexr spline_correction
 spline_correction_array <- function(a) {
   if_else(is.na(as.vector(a)), 0, a) %>%
     spline_correction() %>%
