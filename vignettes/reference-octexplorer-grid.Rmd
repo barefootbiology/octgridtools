@@ -1,0 +1,411 @@
+---
+title: "Understanding ETDRS Grid Analysis from OCTExplorer v 3.8.0 (9/8/2017)"
+author: "S. Scott Whitmore"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    fig_caption: yes
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+editor_options: 
+  chunk_output_type: console
+---
+
+This vignette serves as the standard reference for comparing thickness analyses
+computed with OCTExplorer vs. thickness analyses computed with `octgridtools`
+functions. The data used to generate this package is contained in the `octdata`
+package.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, 
+  warning = FALSE,
+  message = FALSE,
+  collapse = TRUE,
+  comment = "#>")
+knitr::opts_knit$set(root.dir = here::here())
+
+setwd(here::here())
+
+library(heyexr)
+library(octgridtools)
+library(tidyverse)
+library(patchwork)
+library(broom)
+
+data(layer_info, package = "heyexr")
+
+data(thickness_analysis, package = "octdata")
+
+data(sdoct, package = "octdata")
+
+example_info <- 
+  octdata::sdoct_files %>%
+  filter(subject_id == "TEST_T") %>% 
+  filter(sample_id %in% names(sdoct)) %>% 
+  inner_join(octdata::vol_headers) %>%
+  filter(num_bscans == 61) %>%
+  # Add in the screenshots from OCTExplorer
+  inner_join(octdata::sdoct_files %>% 
+               filter(file_type == "projected_image_custom") %>%
+               select(sample_id, file_name) %>%
+               rename(nfl_image = file_name))
+
+example <- sdoct[example_info$sample_id]
+
+names(example) <- example_info$scan_position
+
+rm(sdoct)
+
+aspect_ratio <- 
+  example %>%
+  map(~get_enface_aspect(.x$volume))
+
+nfl_images <- 
+  example_info$nfl_image %>%
+  set_names(example_info$scan_position) %>%
+  map(~magick::image_read(system.file("extdata", .x, package = "octdata")))
+```
+
+
+```{r figOctexplorerProjections, fig.cap="Projected images rendered by OCTExplorer of the nerve fiber layer (NFL; surfaces 1-2) in the ETDRS regions for right and left eyes.", fig.width=12, fig.height=6}
+screenshot <-
+  nfl_images %>%
+  imap(
+    ~tibble(
+      x = c(1 - 0.5, example[[.y]]$volume$header$size_x + 0.5), 
+      y = c(1 - 0.5, example[[.y]]$volume$header$num_bscans + 0.5)
+      ) %>%
+     ggplot(aes(x = x, y = y)) +
+     geom_point(alpha = 0) +
+     annotation_raster(
+       raster = .x, 
+       xmin = 1 - 0.5, 
+       xmax = example[[.y]]$volume$header$size_x + 0.5,
+       ymin = 1 - 0.5,
+       ymax = example[[.y]]$volume$header$num_bscans + 0.5) +
+     scale_x_continuous(expand = c(0, 0)) +
+     scale_y_continuous(expand = c(0, 0)) +
+      coord_fixed(ratio = aspect_ratio[[.y]])
+      )
+
+screenshot$OD + screenshot$OS + plot_layout(ncol = 2)
+```
+
+
+
+
+Which ETDRS grid IDs match which anatomic regions?
+
+```{r results="asis"}
+thickness_analysis %>% 
+  inner_join(layer_info) %>%
+  select(sample_id, laterality, oct_center_type, layer, region, mean, sd) %>%
+  filter(layer == "NFL") %>%
+  knitr::kable()
+```
+
+NOTE: Both images are centered on the macula, but for some reason the data
+was not entered into Heidelberg Explorer correctly.m,,                                                           
+
+
+
+This figure and table indicates the region 7 is located superior to the center
+and region 9 is located inferior to the center. 
+
+Let's read in the ETDRS grid definition I compiled a couple of years ago. How
+does this natively appear when plotted with `ggplot`?
+
+```{r figEtdrsGridOd, fig.caption="Nine grid regions for the Early Treatment of Diabetic Retinopathy Study (ETDRS) grid as used by OCTExplorer. Orientation for the right (OD) eye shown.", fig.width=12, fig.height=6}
+# Sectoral grid
+data(grid_sectors_etdrs, package = "heyexr") 
+
+grid_sectors_etdrs <- 
+  grid_sectors_etdrs %>%
+  mutate(type = "sectors")
+
+flip_bit <- -1
+
+affine_flip_y <- matrix(c(flip_bit, 0, 0, 0, 1, 0, 0, 0, 1), 
+                        ncol = 3, 
+                        byrow = TRUE)
+
+grid_sectors_etdrs_ou <- list() 
+grid_sectors_etdrs_ou$OD <- grid_sectors_etdrs
+grid_sectors_etdrs_ou$OS <- affine_transform_coord(grid_sectors_etdrs, 
+                                                   affine = affine_flip_y)
+
+grid_sectors_etdrs_ou_tbl <-
+  grid_sectors_etdrs_ou %>%
+  map_dfr(~.x, .id = "laterality")
+
+grid_sectors_etdrs_centers <-
+  grid_sectors_etdrs_ou_tbl %>%
+  group_by(laterality, .cell_id) %>%
+  dplyr::summarise(x = mean(x), y = mean(y))
+
+grid_sectors_etdrs_ou_tbl %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_polygon(aes(group = .cell_id),
+               color = "black",
+               fill = NA) +
+  geom_text(data = grid_sectors_etdrs_centers,
+            mapping = aes(x = x, y = y, label = .cell_id)) +
+  coord_equal() +
+  labs(title = "ETDRS\ndefault y-axis") +
+  facet_grid(~ laterality)
+```
+
+When plotting using ggplot, 7 appears superior to the fovea and 9 appears 
+inferior to the fovea, as in the figure above. 
+
+Things to remember:
+
+1. The ETDRS grid definition assumes OD (right) orientation. The grid must be
+mirrored about the superior-inferior axis to be used with OS (left) orientation.
+
+2. The grid assumes that positive values on the y-axis are superior to the 
+center and negative values on the y-axis are inferior to the center.
+
+Overlay the grid on the structural en face image.
+
+```{r figStructuralEnface, fig.cap="Structural en face images of the retina and RPE (surfaces 1 - 10).", fig.width=12, fig.height=6}
+seg_volume <- 
+  example %>%
+  map(
+    ~expand_surfaces_to_volume(
+      surface_array = iowa_segmentation_to_array(.x$segmentation),
+      vol_dim = dim(.x$volume$bscan_images)
+    )
+  )
+
+surface_array <- 
+  example %>%
+  map(~iowa_segmentation_to_array(.x$segmentation))
+
+slicer_full_thickness <- 
+  seg_volume %>%
+  map(~create_slicer_range(seg_volume = .x, 1, 10))
+
+volume_sliced <- 
+  example %>%
+  map2(slicer_full_thickness, ~.x$volume$bscan_images * .y)
+
+enface_full_thickness <- 
+  volume_sliced %>%
+  map2(
+    example,
+    # Using gamma correction here as I expect that is what OCTExplorer uses.
+    ~gamma_correction_array(.x) %>%
+      apply(c(1,2), sum, na.rm = TRUE) %>%
+      melt_array(c("x", "y", "value")) %>%
+      add_undefined(get_undefined(.y$segmentation)))
+
+p_enface_full_thickness <- 
+  enface_full_thickness %>%
+  map(~.x %>% 
+    ggplot(aes(x = x, y = y)) +
+    geom_raster(aes(fill = value_defined)) +
+    scale_fill_gradient(guide = "none", low = "black", high = "white") +
+    scale_x_continuous(expand = c(0, 0)) + 
+    scale_y_continuous(expand = c(0, 0)) +
+    coord_fixed(ratio = aspect_ratio$OD) 
+  )
+  
+p_enface_full_thickness$OD + 
+  p_enface_full_thickness$OS + 
+  plot_layout(ncol = 2)
+```
+
+```{r figStructuralEnfaceGrid, fig.cap="Grid regions shown overlaid on right and left eyes.", fig.width=12, fig.height=6}
+# Now convert the grid to a slicer
+grid_slicer <- 
+  example %>% 
+    map2(grid_sectors_etdrs_ou,
+    ~convert_grid_to_slicer(
+    grid = .y, 
+    grid_center = .x$grid_center, 
+    dims = dim(.x$volume$bscan_images), 
+    scale_x = .x$volume$header$scale_x,
+    scale_y = .x$volume$header$distance
+    )
+  )
+
+p_overlay <- 
+  grid_slicer %>%
+  map(
+    ~.x[ , , 1] %>% 
+    melt_array(c("x", "y", ".cell_id")) %>%
+    
+    ggplot(aes(x = x, y = y)) + 
+    geom_raster(aes(fill = as.factor(.cell_id)),
+                alpha = 0.7) +   
+    scale_x_continuous(expand = c(0,0)) + 
+    scale_y_continuous(expand = c(0,0)) +
+    scale_fill_brewer(name = "region", palette = "Set1"),
+    .id = laterality
+    )
+
+p_overlay$OD + 
+  p_overlay$OS + 
+  plot_layout(ncol = 2) & 
+  coord_fixed(ratio = aspect_ratio$OD)
+
+annotation_add_enface <- function(plot_overlay, width, height) {
+  temp_png <- tempfile()
+  
+  dpi <- 72
+  
+  ggsave(plot_overlay, 
+         filename = temp_png, 
+         device = "png", 
+         units = "in",
+         width = width * 2 / dpi,
+         height = height * 2 / dpi, 
+         bg = "transparent") 
+  
+  overlay <- magick::image_read(temp_png)
+  
+  unlink(temp_png)
+  
+  annotation_raster(raster = overlay, 
+                    xmin = 1,
+                    xmax = width,
+                    ymin = 1,
+                    ymax = height, 
+                    interpolate = FALSE)
+}
+
+p_enface_full_thickness_overlay <-
+  p_enface_full_thickness  %>%
+  imap(~.x + 
+    annotation_add_enface(p_overlay[[.y]] + theme_nude(), 
+                          width = example[[.y]]$volume$header$size_x,
+                          height = example[[.y]]$volume$header$num_bscans)
+  )
+
+p_enface_full_thickness_overlay$OD + 
+  p_enface_full_thickness_overlay$OS + 
+  plot_layout(ncol = 2)
+```
+
+Notice that the en face image computed by OCTExplorer displays greater contrast
+than the en face image I'm computing here. 
+
+Now let's compute the ETDRS thickness using this grid defintion for the example
+eye and plot the results:
+
+```{r results="asis"}
+grid_thickness <- 
+  example %>%
+  map(
+    ~calculate_grid_thickness(
+      segmentation = .x$segmentation, 
+      grid_center = .x$grid_center, 
+      grid = grid_sectors_etdrs, 
+      flip_region = "OD"
+      ) %>%
+  left_join(layer_info) 
+  ) 
+
+grid_thickness %>%
+  bind_rows(.id = "laterality") %>%
+  filter(layer == "NFL") %>%
+  select(laterality, layer, .cell_id, thickness_um_mean, thickness_um_sd) %>%
+  mutate(thickness_um_mean = round(thickness_um_mean, digits = 2),
+         thickness_um_sd = round(thickness_um_sd, digits = 2)) %>%  
+  knitr::kable()
+```
+
+NOTE: The slicer concept assumes the a voxel can be assigned to one and only one
+"level" in the slicer "factor".
+
+Let's overlay this information back on the en face graph.
+
+```{r figStructuralEnfaceGridThickness, fig.cap="ETDRS grid regions shown overlaid on right and left eyes. Within each region, the region number, mean thickness, and standard deviation of thickness are shown.", fig.width=12, fig.height=12}
+grid_thickness_enface_centers <- 
+  grid_slicer %>% 
+    map2(grid_thickness,
+         ~.x[ , , 1] %>% 
+    melt_array(c("x", "y", ".cell_id")) %>%
+    group_by(.cell_id) %>%
+    dplyr::mutate(voxel_center_x = mean(x), 
+                  voxel_center_y = mean(y)) %>%
+    ungroup() %>%
+    left_join(.y)
+  )
+
+# Approximate the OCTExplorer color palette using these colors.
+# TASK: See if these colors are defined in OCTExplorer
+custom_colors <- c("blue", "lightblue", "green", "yellow", "orange", "red")
+
+p_overlay_2 <- 
+  grid_thickness_enface_centers %>%
+  map(~.x %>%
+  filter(layer == "NFL" | is.na(.cell_id)) %>%
+  
+  ggplot(aes(x = x, y = y)) + 
+  geom_raster(aes(fill = thickness_um_mean),
+              alpha = .75) +   
+  scale_x_continuous(expand = c(0,0)) + 
+  scale_y_continuous(expand = c(0,0)) +
+  scale_fill_gradientn(name = "thickness (µm)",
+                       colors = custom_colors, na.value = NA)
+  )
+
+p_enface_full_thickness_overlay_2 <-
+  p_enface_full_thickness %>%
+  imap(~.x +
+    annotation_add_enface(p_overlay_2[[.y]] + theme_nude(), 
+                          width = example[[.y]]$volume$header$size_x,
+                          height = example[[.y]]$volume$header$num_bscans) +    
+    geom_point(x = example[[.y]]$grid_center$center$x,
+               y = example[[.y]]$grid_center$center$z,
+               color = "red",
+               size = 2) +
+    # geom_vline(xintercept = example[[.y]]$grid_center$center$x,
+    #            color = "green") +  
+    # geom_hline(yintercept = example[[.y]]$grid_center$center$z,
+    #            color = "red") +
+    geom_text(data = grid_thickness_enface_centers[[.y]] %>%
+                filter(layer == "NFL") %>%
+                select(.cell_id, 
+                       voxel_center_x, 
+                       voxel_center_y, 
+                       thickness_um_mean, 
+                       thickness_um_sd) %>%
+                distinct() %>%
+                mutate(thickness_um_mean = round(thickness_um_mean, digits = 2),
+                       thickness_um_sd = round(thickness_um_sd, digits = 2)),
+              
+              mapping = aes(x = voxel_center_x, 
+                            y = voxel_center_y, 
+                            label = paste0(.cell_id, "\n", 
+                                          thickness_um_mean, 
+                                          "\n(",
+                                          thickness_um_sd,
+                                          ")")),
+              fontface = "bold",
+              lineheight = 0.75) +
+      ggtitle(paste0("(", example[[.y]]$grid_center$center$x, ", ", 
+                     example[[.y]]$grid_center$center$z, ")"))
+  )
+
+screenshot$OD + 
+  screenshot$OS + 
+  p_enface_full_thickness_overlay_2$OD +
+  p_enface_full_thickness_overlay_2$OS +
+  plot_layout(ncol = 2, nrow = 2, byrow = TRUE)
+```
+
+**Conclusion**: The thickness values computed by OCTExplorer and the 
+`octgridtools` function are very close. I suspect there are three sources of
+differences between the two functions:
+
+1. Which voxels are assigned to which regions. 
+2. When values are scaled (before or after computing the average).
+3. How many significant digits are retained between steps.
+
+I'll need to explore these possibilities sometime in the future.
