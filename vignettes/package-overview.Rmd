@@ -27,7 +27,7 @@ spatial data using those grids. I developed the package to work specifically
 with data from OCT segmentation, but most of the functions should be applicable
 to any situation where you may want to analyze data using a grid.
 
-# Creating grids
+## Creating grids
 
 Currently, we have functions for working with three types of grids: sectoral,
 rectangular, and hexagonal. Sectoral grids are currently specified by a TSV
@@ -91,7 +91,7 @@ Other columns are optional.
 * `row_id`
 * `col_id`
 
-# Plotting grids
+## Plotting grids
 
 Standard column makes it easy to combine multiple grids:
 
@@ -146,7 +146,7 @@ grid_examples %>%
 ```
 
 
-# Keeping track of scaling and coordinate spaces
+## Keeping track of scaling and coordinate spaces
 
 TASK: Write up vignette for heyexr detailing the 0-based (OCTExplorer) vs. 
 1-based system (R matrices, tables), plotting from bottom left vs. top left 
@@ -155,12 +155,12 @@ TASK: Write up vignette for heyexr detailing the 0-based (OCTExplorer) vs.
 * DISCUSS VOXEL SPACE VS ANATOMIC (METRIC) SPACE VS. SLO SPACE (MAY REQUIRE 
 ROTATION OF VOXEL SPACE BSCAN COORDINATES.)
 
-# Transforming grids
+## Transforming grids
 
 Grid can be transformed using (homogeneous) affine matrices or using the
 `scales::rescale` function to scale or move the bounding box of the grid.
 
-# Using grids to summarize or transform spatially organized data
+## Using grids to summarize or transform spatially organized data
 
 1. Find overlaps between the coordinates of the grid cells and the data.
 2. Group the data by their cells.
@@ -171,7 +171,7 @@ Grid can be transformed using (homogeneous) affine matrices or using the
 In stead of summary statistics, you could perform other kinds of transforms on
 the data within a cell region, and re-dispay the data. 
 
-# Important points to consider when using grids to summarize data
+## Important points to consider when using grids to summarize data
 
 * When analyzing images of paired organs, such as eyes, do you need to compare
 comparable regions across the pair? For example, do you need to consider to
