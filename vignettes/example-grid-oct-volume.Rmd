@@ -2,7 +2,9 @@
 title: "Working with grids and OCT volumes"
 author: "S. Scott Whitmore"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_document
+output: 
+  rmarkdown::html_document:
+    keep_md: TRUE
 editor_options: 
   chunk_output_type: console
 ---
@@ -21,34 +23,43 @@ library(tidyverse)
 library(patchwork)
 library(broom)
 
-source_dir <- function(.path) {
-  list.files(path = .path, 
-           pattern = ".R",
-           full.names = TRUE) %>%
-  purrr::walk(~source(file = .x))
-}
+# source_dir <- function(.path) {
+#   list.files(path = .path, 
+#            pattern = ".R",
+#            full.names = TRUE) %>%
+#   purrr::walk(~source(file = .x))
+# }
 
-source_dir("~/stonelab/packages/octgridtools/R_to_incorporate/")
-
-
-# Specify the location of an example OCT
-data_root <- "~/stonelab/experiments/oct/abca4_ush2a_testing/data/controls/segmentation_v3-8-0_2018-02-05/UI_SF_SPT_000501_001_001_001_ORIGINAL/"
-
-example_vol_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_OCT_Iowa.VOL")
-
-example_segmentation_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_Surfaces_Iowa.xml")
-
-example_grid_center_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_GridCenter_Iowa.xml")
+# source_dir("~/stonelab/packages/octgridtools/R_to_incorporate/")
 
 
-example <- read_oct_files(volume = example_vol_file,
-                          segmentation = example_segmentation_file,
-                          grid_center = example_grid_center_file)
+# # Specify the location of an example OCT
+# data_root <- "~/stonelab/experiments/oct/abca4_ush2a_testing/data/controls/segmentation_v3-8-0_2018-02-05/UI_SF_SPT_000501_001_001_001_ORIGINAL/"
+# 
+# example_vol_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_OCT_Iowa.VOL")
+# 
+# example_segmentation_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_Surfaces_Iowa.xml")
+# 
+# example_grid_center_file <- paste0(data_root, "UI_SF_SPT_000501_001_001_001_ORIGINAL_GridCenter_Iowa.xml")
 
-layer_definition_file <- "~/stonelab/experiments/oct/abca4_ush2a_testing/data/layer_map_3-8-0.xlsx"
 
-layer_definition <- readxl::read_excel(layer_definition_file) %>%
-  mutate(layer = factor(layer, levels = layer))
+# example <- read_oct_files(volume = example_vol_file,
+#                           segmentation = example_segmentation_file,
+#                           grid_center = example_grid_center_file)
+
+data(sdoct, package = "sdoctcontrol")
+
+example <- sdoct
+
+rm(sdoct)
+
+# layer_definition_file <- "~/stonelab/experiments/oct/abca4_ush2a_testing/data/layer_map_3-8-0.xlsx"
+# 
+# layer_definition <- readxl::read_excel(layer_definition_file) %>%
+#   mutate(layer = factor(layer, levels = layer))
+
+data(layer_data, package = "heyexr")
+
 ```
 
 # Table of Contents
@@ -207,7 +218,7 @@ p_slo +
                color = "green", 
                alpha = 0.4) +
   geom_text(data = example$volume$bscan_headers %>%
-               filter(bscan %in% seq(from = 1, to = 61, by = 3)),
+               filter(bscan_id %in% seq(from = 1, to = 61, by = 3)),
             mapping = aes(label = bscan_id,
                           x = start_x_pixels,
                           y = start_y_pixels),
@@ -229,8 +240,8 @@ construct_bscan(example$volume, bscan_id = test_bscan_id) +
   geom_line(data = get_segmentation(example$volume) %>% filter(bscan_id == 30),
             mapping = aes(x = x, 
                           y = z, 
-                          group = surface, 
-                          color = surface),
+                          group = surface_id, 
+                          color = as.factor(surface_id)),
             alpha = 0.75) +
   scale_color_brewer(palette = "Set1") +
   coord_equal()
@@ -421,7 +432,7 @@ p_thickness_octexplorer_alpha <-
 thickness_legend <- get_legend(p_thickness_octexplorer_alpha)
 
 p_slo_overlay <- p_slo + 
-  annotation_overlay(plot_overlay = p_thickness_octexplorer_alpha + theme_nude,
+  annotation_overlay(plot_overlay = p_thickness_octexplorer_alpha + theme_nude(),
                      volume = example$volume) 
 
 gridExtra::grid.arrange(p_slo_overlay, 
@@ -558,7 +569,7 @@ p_enface_full_thickness <-
 
 p_slo_overlay_enface <- 
   p_slo + 
-  annotation_overlay(plot_overlay = p_enface_full_thickness + theme_nude,
+  annotation_overlay(plot_overlay = p_enface_full_thickness + theme_nude(),
                      volume = example$volume) 
 
 p_slo_overlay_enface
@@ -841,7 +852,7 @@ p_slo +
                            yend = end_y_pixels),
              color = "green", 
              alpha = 0.4) +
-  annotation_overlay(p_overlay + theme_nude, volume = example$volume) + 
+  annotation_overlay(p_overlay + theme_nude(), volume = example$volume) + 
   geom_polygon(data = grid_mm,
                mapping = aes(x = x, y = y, group = .cell_id),
                fill = NA, 
@@ -974,7 +985,7 @@ gray_scale <-
 surface_enface_colors <- 
   surfaces_enface %>%
   map(~255 * flip_array(.x, 2) + 1) %>%
-  map(~na_replace(.x, 257))  %>%
+  map(~octgridtools::na_replace(x = .x, 257))  %>%
   map(~gray_scale[.x])
 
 setup_plot3d()
@@ -1046,7 +1057,7 @@ leading_edge <- seq(from = example$grid_center$center$z,
 surface_enface_colors_trimmed <- 
   surfaces_enface %>%
   imap(~255 * flip_array(.x, 2)[, leading_edge[[.y]]:size_z ] + 1) %>%
-  map(~na_replace(.x, 257))  %>%
+  map(~octgridtools::na_replace(x = .x, 257))  %>%
   map(~gray_scale[.x])
 
 setup_plot3d()
