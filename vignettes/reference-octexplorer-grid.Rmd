@@ -400,12 +400,13 @@ screenshot$OD +
   plot_layout(ncol = 2, nrow = 2, byrow = TRUE)
 ```
 
-**Conclusion**: The thickness values computed by OCTExplorer and the 
+**Conclusion**: ~~The thickness values computed by OCTExplorer and the 
 `octgridtools` function are very close. I suspect there are three sources of
-differences between the two functions:
+differences between the two functions:~~ Update: Now that I've revised how I'm
+reading grid center XML files, my results are stunningly close. Slight 
+differences are likely rounding error.
 
-1. Which voxels are assigned to which regions. 
+~~1. Which voxels are assigned to which regions.~~ 
 2. When values are scaled (before or after computing the average).
 3. How many significant digits are retained between steps.
 
-I'll need to explore these possibilities sometime in the future.
