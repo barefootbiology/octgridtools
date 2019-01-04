@@ -94,9 +94,6 @@ screenshot <-
 screenshot$OD + screenshot$OS + plot_layout(ncol = 2)
 ```
 
-
-
-
 Which ETDRS grid IDs match which anatomic regions?
 
 ```{r results="asis"}
@@ -109,8 +106,6 @@ thickness_analysis %>%
 
 NOTE: Both images are centered on the macula, but for some reason the data
 was not entered into Heidelberg Explorer correctly.m,,                                                           
-
-
 
 This figure and table indicates the region 7 is located superior to the center
 and region 9 is located inferior to the center. 
@@ -406,7 +401,14 @@ differences between the two functions:~~ Update: Now that I've revised how I'm
 reading grid center XML files, my results are stunningly close. Slight 
 differences are likely rounding error.
 
-~~1. Which voxels are assigned to which regions.~~ 
+~~1. Which voxels are assigned to which regions.~~ Update: The difference may also be due to a difference in the number of points 
+I'm using to define a circle or an arc. Increasing point densities along the 
+edge of a polygonal region will change which voxel is counted within or outside
+the edge. Again, this is a hunch as to why there might be 0.01 difference between
+some of the calculations.
 2. When values are scaled (before or after computing the average).
 3. How many significant digits are retained between steps.
 
+```{r rSessionInfo}
+sessionInfo()
+```
