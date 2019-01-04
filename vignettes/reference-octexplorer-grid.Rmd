@@ -24,7 +24,8 @@ knitr::opts_chunk$set(
   warning = FALSE,
   message = FALSE,
   collapse = TRUE,
-  comment = "#>")
+  comment = "#>",
+  out.width = "100%")
 knitr::opts_knit$set(root.dir = here::here())
 
 setwd(here::here())
