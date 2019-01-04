@@ -12,6 +12,10 @@ sector_to_polygon <- function(radius_from, radius_to,
                               cell_id = NA,
                               is_circle = FALSE) {
 
+  # If radius_from == 0, we're dealing with a circle.
+  # If radius_from > 0 and is_circle == FALSE, were dealing with a sector
+  # If radius_from > 0 and is_circle == TRUE, we're dealing with a ring.
+
   # If the arc passes through 360,
   # adjust the angle_to accordingly
   if (angle_from > angle_to) {
@@ -42,7 +46,17 @@ sector_to_polygon <- function(radius_from, radius_to,
     ) %>%
       mutate(segment_id = "DA")
 
-    sector <- bind_rows(sector, DA)
+    if(is_circle) {
+      # Repeating the first point before the hole ensures that
+      # `ggplot2::geom_path` will correctly draw the hole without connecting
+      # the inner and outer segments. See Dewey Dunnington's post for details:
+      # https://apps.fishandwhistle.net/archives/1126
+      sector <- bind_rows(sector, sector[1, ]) %>%
+        mutate(is_hole = FALSE) %>%
+        bind_rows(DA %>% mutate(is_hole = TRUE))
+    } else {
+      sector <- bind_rows(sector, DA) %>% mutate(is_hole = FALSE)
+    }
   }
 
   sector %>%
