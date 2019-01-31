@@ -3,7 +3,7 @@
 #' Reads a set of files produced by OCTExplorer related to a single OCT image.
 #'
 #' @export
-#' @importFrom heyexr read_heyex read_segmentation_xml read_center_xml
+#' @importFrom heyexr read_vol read_segmentation_xml read_center_xml
 read_oct_files <- function(volume = NA,
                            segmentation = NA,
                            grid_center = NA,
@@ -16,7 +16,7 @@ read_oct_files <- function(volume = NA,
 
   if(!is.na(volume)) {
     message("Reading volume file ", volume)
-    result$volume <- read_heyex(vol_file = volume)
+    result$volume <- read_vol(vol_file = volume)
   }
 
   if(!is.na(segmentation)) {
