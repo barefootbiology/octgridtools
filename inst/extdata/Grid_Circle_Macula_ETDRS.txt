@@ -1,4 +1,4 @@
-etdrs_region	radius_from	radius_to	angle_from	angle_to	is_circle
+.cell_id	radius_from	radius_to	angle_from	angle_to	is_circle
 1	0	0.5	0	360	TRUE
 2	0.5	1.5	315	45	FALSE
 3	0.5	1.5	45	135	FALSE
