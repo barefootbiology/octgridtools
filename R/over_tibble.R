@@ -3,7 +3,8 @@
 #' A wrapper for sp::over that allows one to bind data to the resulting tibble
 #'
 #' @export
-#' @importFrom dplyr bind_cols as_tibble
+#' @importFrom dplyr bind_cols
+#' @importFrom tibble as_tibble
 #' @importFrom sp over
 #' @importFrom magrittr %>%
 over_tibble <- function(x, y, data = NULL) {

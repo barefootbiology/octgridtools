@@ -4,7 +4,8 @@
 #'
 #' @export
 #' @importFrom sp over
-#' @importFrom dplyr bind_cols as_tibble
+#' @importFrom dplyr bind_cols
+#' @importFrom tibble as_tibble
 #' @importFrom magrittr %>%
 find_sppoints_in_sppolygons <- function(pts, plygns, pts_attributes = NULL) {
 
