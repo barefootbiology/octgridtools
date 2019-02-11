@@ -8,5 +8,5 @@ create_seg_array(segmentation)
 }
 \description{
 Converts a segmentation object from `heyexr` into a segmentation array.
-This function works with IRA/OCTExplorer segmenation coordinate definition.
+This function works with IRA/OCTExplorer segmentation coordinate definition.
 }

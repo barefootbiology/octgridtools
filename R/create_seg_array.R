@@ -1,7 +1,7 @@
 #' Convert segmentation object into a segmentation array
 #'
 #' Converts a segmentation object from `heyexr` into a segmentation array.
-#' This function works with IRA/OCTExplorer segmenation coordinate definition.
+#' This function works with IRA/OCTExplorer segmentation coordinate definition.
 #'
 #' @export
 #' @importFrom dplyr arrange select
