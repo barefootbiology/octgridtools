@@ -20,6 +20,7 @@ knitr::opts_chunk$set(
 library(octgridtools)
 library(heyexr)
 library(tidyverse)
+library(scales)
 ```
 
 `octgridtools` provides functions to (a) generate grids and (b) summarize 
