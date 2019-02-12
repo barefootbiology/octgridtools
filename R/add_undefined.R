@@ -2,7 +2,7 @@
 #'
 #' Adds a column `is_defined` which indicates if a particular A-scan could be
 #' reliably segmented. NOTE: This function assumes there is a column named
-#' "value", but this column  name is likely to change in future interations of
+#' "value", but this column  name is likely to change in future iterations of
 #' the software.
 #'
 #' @export
