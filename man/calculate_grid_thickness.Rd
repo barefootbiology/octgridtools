@@ -4,7 +4,8 @@
 \alias{calculate_grid_thickness}
 \title{Compute thickness across OCT segmentations using a grid.}
 \usage{
-calculate_grid_thickness(segmentation, grid_center, grid, flip_region = "OD",
+calculate_grid_thickness(segmentation, grid_center, grid,
+  flip_region = "OD",
   laterality = grid_center[["scan_characteristics"]][["laterality"]][[1]])
 }
 \description{

@@ -4,8 +4,9 @@
 \alias{sector_to_polygon}
 \title{Construct a sector or circle as a polygon}
 \usage{
-sector_to_polygon(radius_from, radius_to, angle_from, angle_to, center = c(0,
-  0), n_points = 100, cell_id = NA, is_circle = FALSE)
+sector_to_polygon(radius_from, radius_to, angle_from, angle_to,
+  center = c(0, 0), n_points = 100, cell_id = NA,
+  is_circle = FALSE)
 }
 \description{
 Return a data frame of points that can be plotted as a polygon
