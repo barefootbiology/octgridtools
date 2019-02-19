@@ -196,6 +196,8 @@ enface_full_thickness <-
     # Using gamma correction here as I expect that is what OCTExplorer uses.
     ~gamma_correction_array(.x) %>%
       apply(c(1,2), sum, na.rm = TRUE) %>%
+      # Normalize the data per B-scan
+      apply(2, (function(x) x / sum(x, na.rm = TRUE))) %>%
       melt_array(c("x", "y", "value")) %>%
       add_undefined(get_undefined(.y$segmentation)))
 
