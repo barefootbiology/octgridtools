@@ -35,13 +35,17 @@ expand_surfaces_to_volume <- function(surface_array, vol_dim) {
       lengths <- layer_thicknesses[i, j, ]
       values <- 0:n_surfaces
 
-      result_vol[i, j, ] <-
-        inverse.rle(
-          list(
-            lengths = layer_thicknesses[i, j, ],
-            values = 0:n_surfaces
+      if(!any(is.na(lengths))) {
+        result_vol[i, j, ] <-
+          inverse.rle(
+            list(
+              lengths = layer_thicknesses[i, j, ],
+              values = 0:n_surfaces
+            )
           )
-        )
+      } else {
+        result_vol[i, j, ] <- rep(as.numeric(NA), vol_dim[3])
+      }
     }
   }
 
