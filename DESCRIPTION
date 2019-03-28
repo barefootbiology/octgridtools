@@ -22,5 +22,6 @@ Imports: dplyr,
     sp,
     tibble
 Suggests: knitr,
-    rmarkdown
+    rmarkdown,
+    abind
 VignetteBuilder: knitr
