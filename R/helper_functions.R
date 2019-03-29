@@ -2,6 +2,7 @@
 #'
 #' Code from:
 #' http://hacksociety.net/Thread-Tutorial-Creating-a-hexagonal-grid-for-games-C
+#' @keywords internal
 .calc_y <- function(i, j, s, y0=0) {
   a <- sqrt(3) * (s / 2)
 

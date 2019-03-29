@@ -15,3 +15,4 @@ A data.frame with the first row repeated at the end.
 \description{
 Repeat the first row at the end of the data.frame.
 }
+\keyword{internal}

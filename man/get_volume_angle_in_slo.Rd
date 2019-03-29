@@ -9,3 +9,4 @@ get_volume_angle_in_slo(volume)
 \description{
 Returns the angle of B-scans in a VOL file.
 }
+\keyword{internal}
