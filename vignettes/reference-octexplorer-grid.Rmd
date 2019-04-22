@@ -41,12 +41,15 @@ data(layer_info, package = "heyexr")
 data(thickness_analysis, package = "octdata")
 
 data(sdoct, package = "octdata")
+data(sdoct_files, package = "octdata")
+data(vol_headers, package = "octdata")
+
 
 example_info <- 
-  octdata::sdoct_files %>%
+  sdoct_files %>%
   filter(subject_id == "TEST_T") %>% 
   filter(sample_id %in% names(sdoct)) %>% 
-  inner_join(octdata::vol_headers) %>%
+  inner_join(vol_headers) %>%
   filter(num_bscans == 61) %>%
   # Add in the screenshots from OCTExplorer
   inner_join(octdata::sdoct_files %>% 
