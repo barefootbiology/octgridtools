@@ -5,8 +5,14 @@
 #' @export
 #' @importFrom dplyr group_by arrange mutate filter ungroup select
 #' @importFrom magrittr %>%
-compute_layer_thickness <- function(seg) {
-  seg$layers %>%
+compute_layer_thickness <- function(seg, expand_surfaces = FALSE) {
+  layers <- seg$layers
+
+  if(expand_surfaces) {
+    layers <- expand_surfaces(seg)
+  }
+
+  layers %>%
     group_by(bscan_id, ascan_id) %>%
     arrange(bscan_id, ascan_id) %>%
     mutate(thickness_voxel = lead(value) - value) %>%
