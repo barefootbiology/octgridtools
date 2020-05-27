@@ -7,18 +7,14 @@
 #' @importFrom magrittr %>%
 compute_layer_thickness <- function(seg) {
   seg$layers %>%
-    # ------------
-    # Remove ascans which were marked by the Iowa Reference Algorithms as
-    # unreliable.
-    anti_join(seg$undefined_region) %>%
-    # ------------
     group_by(bscan_id, ascan_id) %>%
     arrange(bscan_id, ascan_id) %>%
-    mutate(thickness_voxels = lead(value) - value) %>%
-    filter(!is.na(thickness_voxels)) %>%
-    # Convert thickness to millimeters
-    mutate(thickness_um = thickness_voxels *
-      seg$info$voxel_size_y * 1000) %>%
+    mutate(thickness_voxel = lead(value) - value) %>%
+    filter(!is.na(thickness_voxel)) %>%
+    # Convert thickness to microns
+    mutate(
+      thickness_um = thickness_voxel * seg$info$voxel_size_y * 1000
+      ) %>%
     ungroup() %>%
     mutate(
       x = ascan_id * seg$info$voxel_size_x,
@@ -26,5 +22,5 @@ compute_layer_thickness <- function(seg) {
     ) %>%
     # NOTE: The output is now being referenced to the x, y of the
     # grid, not the x, z of the volume.
-    select(surface_id, ascan_id, x, bscan_id, y, thickness_um)
+    select(surface_id, ascan_id, x, bscan_id, y, thickness_voxel, thickness_um)
 }

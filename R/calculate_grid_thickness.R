@@ -11,7 +11,8 @@ calculate_grid_thickness <- function(segmentation,
                                      grid_center,
                                      grid,
                                      flip_region = "OD",
-                                     laterality = grid_center[["scan_characteristics"]][["laterality"]][[1]]) {
+                                     laterality = grid_center[["scan_characteristics"]][["laterality"]][[1]],
+                                     mask_undefined = TRUE) {
 
   # TASK: Add more error checking here.
   if(!(toupper(laterality) %in% c("OD", "OS"))) {
@@ -71,6 +72,14 @@ calculate_grid_thickness <- function(segmentation,
   cells_sppolygons <- cells_to_spatialpolygons(grid_transformed)
 
   segmentation_thickness <- compute_layer_thickness(segmentation)
+
+  # Remove ascans which were marked by the Iowa Reference Algorithms as
+  # unreliable.
+  if(mask_undefined) {
+    segmentation_thickness <-
+      segmentation_thickness %>%
+      anti_join(segmentation$undefined_region)
+  }
 
   segmentation_thickness_points <- tibble_to_spatialpoints(segmentation_thickness)
 
