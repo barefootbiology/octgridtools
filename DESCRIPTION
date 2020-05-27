@@ -21,7 +21,8 @@ Imports: dplyr,
     scales,
     sp,
     tibble
-Suggests: knitr,
-    rmarkdown,
-    abind
+Suggests: abind,
+    knitr,
+    magick,
+    rmarkdown
 VignetteBuilder: knitr
