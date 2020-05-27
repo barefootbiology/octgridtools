@@ -5,9 +5,9 @@
 #' Iowa Reference Algorithms.
 #'
 #' @export
-#' @importFrom tidyverse select distinct bind_rows arrange
+#' @importFrom dplyr select distinct bind_rows arrange
 #' @importFrom magrittr %>%
-#' @importFrom purr map_dfr
+#' @importFrom purrr map_dfr
 #' @importFrom tibble tibble
 expand_surfaces <- function(seg) {
   # Get every A-scan and B-scan.

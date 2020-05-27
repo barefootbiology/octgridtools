@@ -4,7 +4,7 @@
 \alias{compute_layer_thickness}
 \title{Compute layer thickness in voxels}
 \usage{
-compute_layer_thickness(seg)
+compute_layer_thickness(seg, expand_surfaces = FALSE)
 }
 \description{
 Compute per bscan layer thickness for every ascan.
