@@ -12,7 +12,7 @@
 expand_surfaces <- function(seg) {
   # Get every A-scan and B-scan.
   coordinates <-
-    seg %>%
+    seg$layers %>%
     select(bscan_id, ascan_id) %>%
     distinct()
 
