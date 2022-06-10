@@ -7,8 +7,8 @@ output:
     fig_caption: yes
 vignette: >
   %\VignetteIndexEntry{Understanding ETDRS Grid Analysis from OCTExplorer v 3.8.0 (9/8/2017)}
-  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
 editor_options: 
   chunk_output_type: console
 ---
@@ -226,12 +226,12 @@ grid_slicer <-
   example %>% 
     map2(grid_sectors_etdrs_ou,
     ~convert_grid_to_slicer(
-    grid = .y, 
-    grid_center = .x$grid_center, 
-    dims = dim(.x$volume$bscan_images), 
-    scale_x = .x$volume$header$scale_x,
-    scale_y = .x$volume$header$distance
-    )
+      grid = .y, 
+      grid_center = .x$grid_center, 
+      dims = dim(.x$volume$bscan_images), 
+      scale_x = .x$volume$header$scale_x,
+      scale_y = .x$volume$header$distance
+      )
   )
 
 p_overlay <- 
