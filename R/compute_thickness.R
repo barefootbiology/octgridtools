@@ -1,6 +1,6 @@
 #' Compute thickness of a segmentation array
 #'
-#' Computes the thickness of a 2D segmentation array by subtracking the z values
+#' Computes the thickness of a 2D segmentation array by subtracting the z values
 #' of adjacent layers. NOTE: This might give unreliable results if layers
 #' are allowed to intersect (i.e., after manual correction).
 #'

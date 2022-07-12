@@ -6,8 +6,8 @@
 #' @importFrom tibble as_tibble
 affine_transform_coord <- function(df, coords = c("x", "y"), affine) {
 
-  # TASK: This could probably be updated, just incase the coords vector includes
-  #       a column named "v1"
+  # TASK: This could probably be updated, just in case the coords vector
+  # includes a column named "v1"
   df[, coords] <-
     affine %*% t(as.matrix(df[, coords] %>%
       mutate(v1 = 1))) %>%
