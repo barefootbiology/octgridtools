@@ -31,23 +31,10 @@ to any situation where you may want to analyze data using a grid.
 ## Creating grids
 
 Currently, we have functions for working with three types of grids: sectoral,
-rectangular, and hexagonal. Sectoral grids are currently specified by a TSV
-file.
+rectangular, and hexagonal. We'll use a the ETDRS grid, a sectoral grid I previously built:
 
 ```{r createExamples}
-# Sectoral grid
-grid_file <- system.file(
-  "extdata", "Grid_Circle_Macula_ETDRS.txt",
-  package = "octgridtools"
-)
-
-grid_sectors <-
-  generate_grid_sectors(
-    read_tsv(grid_file),
-    center_x = 0,
-    center_y = 0
-  ) %>%
-  mutate(type = "sectors")
+grid_sectors <- heyexr::grid_sectors_etdrs
 ```
 
 Rectangular and hexagonal grids can be constructed directly:
