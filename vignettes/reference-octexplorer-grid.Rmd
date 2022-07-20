@@ -108,14 +108,11 @@ thickness_analysis %>%
   knitr::kable()
 ```
 
-NOTE: Both images are centered on the macula, but for some reason the data
-was not entered into Heidelberg Explorer correctly.m,,                                                           
+NOTE: Both images are centered on the macula, but for some reason the data was not entered into Heidelberg Explorer correctly.
 
-This figure and table indicates the region 7 is located superior to the center
-and region 9 is located inferior to the center. 
+This figure and table indicates the region 7 is located superior to the center and region 9 is located inferior to the center. 
 
-Let's read in the ETDRS grid definition I compiled a couple of years ago. How
-does this natively appear when plotted with `ggplot`?
+Let's read in the ETDRS grid definition I compiled a couple of years ago. How does this natively appear when plotted with `ggplot`?
 
 ```{r figEtdrsGridOd, fig.caption="Nine grid regions for the Early Treatment of Diabetic Retinopathy Study (ETDRS) grid as used by OCTExplorer. Orientation for the right (OD) eye shown.", fig.width=12, fig.height=6}
 # Sectoral grid
@@ -157,16 +154,13 @@ grid_sectors_etdrs_ou_tbl %>%
   facet_grid(~ laterality)
 ```
 
-When plotting using ggplot, 7 appears superior to the fovea and 9 appears 
-inferior to the fovea, as in the figure above. 
+When plotting using ggplot, 7 appears superior to the fovea and 9 appears inferior to the fovea, as in the figure above. 
 
 Things to remember:
 
-1. The ETDRS grid definition assumes OD (right) orientation. The grid must be
-mirrored about the superior-inferior axis to be used with OS (left) orientation.
+1. The ETDRS grid definition assumes OD (right) orientation. The grid must be mirrored about the superior-inferior axis to be used with OS (left) orientation.
 
-2. The grid assumes that positive values on the y-axis are superior to the 
-center and negative values on the y-axis are inferior to the center.
+2. The grid assumes that positive values on the y-axis are superior to the center and negative values on the y-axis are inferior to the center.
 
 Overlay the grid on the structural en face image.
 
@@ -292,11 +286,9 @@ p_enface_full_thickness_overlay$OD +
   plot_layout(ncol = 2)
 ```
 
-Notice that the en face image computed by OCTExplorer displays greater contrast
-than the en face image I'm computing here. 
+Notice that the en face image computed by OCTExplorer displays greater contrast than the en face image I'm computing here. 
 
-Now let's compute the ETDRS thickness using this grid defintion for the example
-eye and plot the results:
+Now let's compute the ETDRS thickness using this grid defintion for the example eye and plot the results:
 
 ```{r results="asis"}
 grid_thickness <- 
@@ -320,8 +312,7 @@ grid_thickness %>%
   knitr::kable()
 ```
 
-NOTE: The slicer concept assumes the a voxel can be assigned to one and only one
-"level" in the slicer "factor".
+NOTE: The slicer concept assumes the a voxel can be assigned to one and only one "level" in the slicer "factor".
 
 Let's overlay this information back on the en face graph.
 
@@ -401,17 +392,9 @@ screenshot$OD +
   plot_layout(ncol = 2, nrow = 2, byrow = TRUE)
 ```
 
-**Conclusion**: ~~The thickness values computed by OCTExplorer and the 
-`octgridtools` function are very close. I suspect there are three sources of
-differences between the two functions:~~ Update: Now that I've revised how I'm
-reading grid center XML files, my results are stunningly close. Slight 
-differences are likely rounding error.
+**Conclusion**: ~~The thickness values computed by OCTExplorer and the `octgridtools` function are very close. I suspect there are three sources of differences between the two functions:~~ Update: Now that I've revised how I'mreading grid center XML files, my results are stunningly close. Slight differences are likely rounding error.
 
-~~1. Which voxels are assigned to which regions.~~ Update: The difference may also be due to a difference in the number of points 
-I'm using to define a circle or an arc. Increasing point densities along the 
-edge of a polygonal region will change which voxel is counted within or outside
-the edge. Again, this is a hunch as to why there might be 0.01 difference between
-some of the calculations.
+~~1. Which voxels are assigned to which regions.~~ Update: The difference may also be due to a difference in the number of points I'm using to define a circle or an arc. Increasing point densities along the edge of a polygonal region will change which voxel is counted within or outside the edge. Again, this is a hunch as to why there might be 0.01 difference between some of the calculations.
 2. When values are scaled (before or after computing the average).
 3. How many significant digits are retained between steps.
 

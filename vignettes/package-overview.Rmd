@@ -23,15 +23,11 @@ library(tidyverse)
 library(scales)
 ```
 
-`octgridtools` provides functions to (a) generate grids and (b) summarize 
-spatial data using those grids. I developed the package to work specifically
-with data from OCT segmentation, but most of the functions should be applicable
-to any situation where you may want to analyze data using a grid.
+`octgridtools` provides functions to (a) generate grids and (b) summarize spatial data using those grids. I developed the package to work specifically with data from OCT segmentation, but most of the functions should be applicable to any situation where you may want to analyze data using a grid.
 
 ## Creating grids
 
-Currently, we have functions for working with three types of grids: sectoral,
-rectangular, and hexagonal. We'll use a the ETDRS grid, a sectoral grid I previously built:
+Currently, we have functions for working with three types of grids: sectoral, rectangular, and hexagonal. We'll use a the ETDRS grid, a sectoral grid I previously built:
 
 ```{r createExamples}
 grid_sectors <- heyexr::grid_sectors_etdrs
@@ -65,9 +61,7 @@ grid_hexagons <-
 ```
 
 
-Grids are stored as tibbles. Each grid contains one or more cells, and each cell
-is made up of three or more nodes, defining a polygon. All grids must contain
-the following columns:
+Grids are stored as tibbles. Each grid contains one or more cells, and each cell is made up of three or more nodes, defining a polygon. All grids must contain the following columns:
 
 * `.cell_id`
 * `.node_id`
@@ -103,8 +97,7 @@ p_grids + facet_grid(~type)
 p_grids
 ```
 
-When generating plots, it can be helpful to label each cell. To calculate the 
-center of each cell, compute the mean `x` and `y` value for each cell.
+When generating plots, it can be helpful to label each cell. To calculate the center of each cell, compute the mean `x` and `y` value for each cell.
 
 ```{r figCenters, fig.width = 8, fig.height = 4}
 centers <- 
@@ -136,17 +129,13 @@ grid_examples %>%
 
 ## Keeping track of scaling and coordinate spaces
 
-TASK: Write up vignette for heyexr detailing the 0-based (OCTExplorer) vs. 
-1-based system (R matrices, tables), plotting from bottom left vs. top left 
-(via `scale_y_reverse()`). Summarize that information here.
+TASK: Write up vignette for heyexr detailing the 0-based (OCTExplorer) vs. 1-based system (R matrices, tables), plotting from bottom left vs. top left (via `scale_y_reverse()`). Summarize that information here.
 
-* DISCUSS VOXEL SPACE VS ANATOMIC (METRIC) SPACE VS. SLO SPACE (MAY REQUIRE 
-ROTATION OF VOXEL SPACE BSCAN COORDINATES.)
+* DISCUSS VOXEL SPACE VS ANATOMIC (METRIC) SPACE VS. SLO SPACE (MAY REQUIRE ROTATION OF VOXEL SPACE BSCAN COORDINATES.)
 
 ## Transforming grids
 
-Grid can be transformed using (homogeneous) affine matrices or using the
-`scales::rescale` function to scale or move the bounding box of the grid.
+Grid can be transformed using (homogeneous) affine matrices or using the `scales::rescale` function to scale or move the bounding box of the grid.
 
 ## Using grids to summarize or transform spatially organized data
 
@@ -156,19 +145,13 @@ Grid can be transformed using (homogeneous) affine matrices or using the
 4. Merge the summary statistics with the original grid coordinates.
 5. Display the grid, mapping summaries to grid polygon aesthetics.
 
-In stead of summary statistics, you could perform other kinds of transforms on
-the data within a cell region, and re-dispay the data. 
+In stead of summary statistics, you could perform other kinds of transforms on the data within a cell region, and re-dispay the data. 
 
 ## Important points to consider when using grids to summarize data
 
-* When analyzing images of paired organs, such as eyes, do you need to compare
-comparable regions across the pair? For example, do you need to consider to
-compare the temporal quadrant of the right (OD) eye to the temporal quadrant of 
-the left eye? If so, then you'll need to reflect the grid prior so that the 
-appropriate `.cell_id`s match anatomically. 
+* When analyzing images of paired organs, such as eyes, do you need to compare comparable regions across the pair? For example, do you need to consider to compare the temporal quadrant of the right (OD) eye to the temporal quadrant of the left eye? If so, then you'll need to reflect the grid prior so that the appropriate `.cell_id`s match anatomically. 
 * Is the size of your grid cells smaller than the resolution of your data?
-* Does the orientation of your grid match the orientation of your data? How is
-your image or map oriented?
+* Does the orientation of your grid match the orientation of your data? How is your image or map oriented?
 
 
 
