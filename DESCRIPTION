@@ -5,7 +5,7 @@ Authors@R: person("S. Scott", "Whitmore", email = "steven-whitmore@uiowa.edu",
                   role = c("aut", "cre"))
 Description: What the package does (one paragraph).
 Depends: R (>= 3.4.3)
-License: TBD
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.2
