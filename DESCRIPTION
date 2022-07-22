@@ -1,9 +1,10 @@
 Package: octgridtools
-Title: What the Package Does (one line, title case)
+Title: Analyze Optical Coherence Tomography Volumes using Grids
 Version: 0.0.0.9000
 Authors@R: person("S. Scott", "Whitmore", email = "steven-whitmore@uiowa.edu",
                   role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Description: Tools for computing retinal layer thickness from segmented OCT data 
+  across different regions specified by grids. 
 Depends: R (>= 3.4.3)
 License: MIT + file LICENSE
 Encoding: UTF-8
